@@ -61,11 +61,11 @@ arbiter_tick(void *a_)
 	if (buffer_is_full(a->output))
 		return;
 	
-	// Iterate over all the inputs starting after the last one to be handled
-	for ( int i = a->last_input + 1
-	    ; i != a->last_input
-	    ; i = (i+1)%a->num_inputs
-	    ) {
+	// Iterate over all the inputs
+	for (int i_ = 0; i_ < a->num_inputs; i_++) {
+		// Starting after the last one to be handled
+		int i = (i_+a->last_input+1)%a->num_inputs;
+		
 		if (!buffer_is_empty(a->inputs[i])) {
 			// There is a value ready at this input, set it to be forwarded during the
 			// tock phase.
@@ -124,7 +124,7 @@ arbiter_create( scheduler_t *s
 	// Initialised so that if the inputs are immediately contended, input 0 will
 	// go first. This isn't neccessary (since the decision is arbitary) but won't
 	// surprise someone watching progress externally.
-	a->last_input = num_inputs;
+	a->last_input = num_inputs-1;
 	
 	a->handle_input = false;
 	
