@@ -12,6 +12,8 @@
  * scheduler calls the events.
  */
 
+#ifndef SCHEDULER_H
+#define SCHEDULER_H
 
 /**
  * A structure which defines a particular instance of a scheduler.
@@ -62,3 +64,5 @@ ticks_t scheduler_get_ticks(scheduler_t *scheduler);
  * Run the simulation for a single time-step.
  */
 void scheduler_tick_tock(scheduler_t *scheduler);
+
+#endif
