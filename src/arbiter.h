@@ -11,6 +11,8 @@
 
 #include <stdlib.h>
 
+#include "config.h"
+
 #include "scheduler.h"
 #include "buffer.h"
 

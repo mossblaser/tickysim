@@ -15,6 +15,8 @@
 #ifndef SCHEDULER_H
 #define SCHEDULER_H
 
+#include "config.h"
+
 /**
  * A structure which defines a particular instance of a scheduler.
  */

@@ -15,6 +15,8 @@
 #include <stdlib.h>
 #include <assert.h>
 
+#include "config.h"
+
 #include "scheduler.h"
 
 /******************************************************************************

@@ -12,6 +12,8 @@
 #include <assert.h>
 #include <stdbool.h>
 
+#include "config.h"
+
 #include "scheduler.h"
 #include "buffer.h"
 #include "arbiter.h"

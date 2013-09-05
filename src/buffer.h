@@ -10,6 +10,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#include "config.h"
+
 /**
  * A structure defining a particular instance of a buffer.
  */
