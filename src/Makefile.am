@@ -1,0 +1,12 @@
+# Do plenty of checking at compile time
+AM_CFLAGS = -Wall -pedantic
+
+# Building some programs (just tickysim in this case) which will be installed in
+# the "bindir".
+bin_PROGRAMS = tickysim
+
+# To build tickysim, compile the following sources
+tickysim_SOURCES  = main.c
+tickysim_SOURCES += arbiter.c arbiter.h
+tickysim_SOURCES += buffer.c buffer.h
+tickysim_SOURCES += scheduler.c scheduler.h
