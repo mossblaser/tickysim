@@ -33,7 +33,7 @@ main(int argc, char *argv[])
 	}
 	
 	printf("\nTesting the buffer:\n");
-	char *buf_elements = "ABCDEFGH";
+	char *buf_elements = "ABCD";
 	
 	buffer_t *b = buffer_create(4);
 	printf("  Buffer is initially empty=%d and full=%d\n", buffer_is_empty(b), buffer_is_full(b));
