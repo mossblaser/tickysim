@@ -64,13 +64,13 @@ typedef struct schedule {
 /**
  * The "main" data-structure of a scheduler.
  */
-typedef struct scheduler {
+struct scheduler {
 	/* A pointer to the start of the linked list of schedule_t structs. */
 	schedule_t *schedules;
 	
 	/* The current simulation time */
 	ticks_t ticks;
-} scheduler_t;
+};
 
 
 /******************************************************************************

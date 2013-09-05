@@ -44,12 +44,12 @@
  *     |              |
  *    tail          head
  */
-typedef struct buffer {
+struct buffer {
 	void   **values;
 	size_t   size;
 	int      head;
 	int      tail;
-} buffer_t;
+};
 
 
 /******************************************************************************
