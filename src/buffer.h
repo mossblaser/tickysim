@@ -24,6 +24,11 @@ typedef struct buffer buffer_t;
 buffer_t *buffer_create(size_t size);
 
 /**
+ * Free the buffer from memory.
+ */
+void buffer_free(buffer_t *buffer);
+
+/**
  * Test whether the buffer is full.
  */
 bool buffer_is_full(buffer_t *buffer);

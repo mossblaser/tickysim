@@ -60,6 +60,8 @@ START_TEST (test_buffer_push_pop)
 			}
 		}
 	}
+	
+	buffer_free(b);
 }
 END_TEST
 

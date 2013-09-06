@@ -72,6 +72,14 @@ buffer_create(size_t size)
 }
 
 
+void
+buffer_free(buffer_t *b)
+{
+	free(b->values);
+	free(b);
+}
+
+
 bool
 buffer_is_full(buffer_t *b)
 {
