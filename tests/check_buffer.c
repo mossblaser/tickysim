@@ -45,10 +45,13 @@ START_TEST (test_buffer_push_pop)
 		
 		// Pop a few items
 		for (int i = 0; i < buf_len; i++) {
+			char *c_peeked = buffer_peek(b);
+			
 			char *c = buffer_pop(b);
 			
 			// Check the value popped was the one put in...
-			ck_assert_int_eq((int)*c, (int)pointables[i]);
+			ck_assert_int_eq((int)*c,        (int)pointables[i]);
+			ck_assert_int_eq((int)*c_peeked, (int)pointables[i]);
 			
 			// Until the last element is popped the list should not be empty
 			if (i < buf_len-1) {

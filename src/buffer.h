@@ -48,5 +48,11 @@ void buffer_push(buffer_t *buffer, void *value);
  */
 void *buffer_pop(buffer_t *buffer);
 
+/**
+ * Get the value of the item which will be popped next. If the buffer_is_empty()
+ * is true, the behaviour is undefined.
+ */
+void *buffer_peek(buffer_t *buffer);
+
 
 #endif

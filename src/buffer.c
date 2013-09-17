@@ -115,3 +115,12 @@ buffer_pop(buffer_t *b)
 	return value;
 }
 
+
+void *
+buffer_peek(buffer_t *b)
+{
+	assert(!buffer_is_empty(b));
+	
+	return b->values[b->tail];
+}
+
