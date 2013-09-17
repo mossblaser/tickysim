@@ -22,6 +22,9 @@ const ticks_t period = 3;
 // The scheduler to use
 scheduler_t *s;
 
+// The arbiter
+arbiter_t *a;
+
 // Input buffers (and the number of them)
 buffer_t **inputs;
 const size_t num_inputs = 3;
@@ -50,7 +53,7 @@ setup(void)
 	output = buffer_create(buf_len);
 	
 	// Create arbiter
-	arbiter_create(s, period, inputs, num_inputs, output);
+	a = arbiter_create(s, period, inputs, num_inputs, output);
 }
 
 
@@ -58,8 +61,13 @@ void
 teardown(void)
 {
 	// Free evrything up
-	// TODO frees for buffers, scheduler and arbiter
+	for (int i = 0; i < num_inputs; i++) {
+		buffer_free(inputs[i]);
+	}
 	free(inputs);
+	buffer_free(output);
+	arbiter_free(a);
+	scheduler_free(s);
 }
 
 

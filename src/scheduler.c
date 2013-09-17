@@ -128,6 +128,31 @@ scheduler_create(void)
 
 
 void
+scheduler_free(scheduler_t *s)
+{
+	// Free the schedule/event structures within.
+	schedule_t *schedule = s->schedules;
+	schedule_t *next_schedule;
+	while (schedule != NULL) {
+		event_t *event = schedule->events;
+		event_t *next_event;
+		while (event != NULL) {
+			next_event = event->next_event;
+			free(event);
+			event = next_event;
+		}
+		
+		next_schedule = schedule->next_schedule;
+		free(schedule);
+		schedule = next_schedule;
+	}
+	
+	// Free the container
+	free(s);
+}
+
+
+void
 scheduler_schedule( scheduler_t *s
                   , ticks_t period
                   , void (*tick)(void *)

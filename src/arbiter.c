@@ -32,7 +32,7 @@
  * is true, the input indicated by last_input will have its value forwarded to
  * the output.
  */
-typedef struct arbiter {
+struct arbiter {
 	buffer_t **inputs;
 	size_t     num_inputs;
 	buffer_t  *output;
@@ -40,7 +40,7 @@ typedef struct arbiter {
 	size_t last_input;
 	
 	bool handle_input;
-} arbiter_t;
+};
 
 
 /******************************************************************************
@@ -101,7 +101,7 @@ arbiter_tock(void *a_)
  * Public functions.
  ******************************************************************************/
 
-void
+arbiter_t *
 arbiter_create( scheduler_t *s
               , ticks_t      period
               , buffer_t   **inputs
@@ -134,8 +134,17 @@ arbiter_create( scheduler_t *s
 	                  , arbiter_tick, (void *)a
 	                  , arbiter_tock, (void *)a
 	                  );
+	
+	return a;
 }
 
 
 
 
+
+void
+arbiter_free( arbiter_t *a)
+{
+	free(a->inputs);
+	free(a);
+}

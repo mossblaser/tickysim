@@ -36,6 +36,12 @@ scheduler_t *scheduler_create(void);
 
 
 /**
+ * Free a scheduler interface.
+ */
+void scheduler_free(scheduler_t *scheduler);
+
+
+/**
  * Schedule a pair of functions to be called at a given period. The tick
  * function will be called during the first phase of the time period and the
  * tock in the second period (after all tick functions have been called).

@@ -16,6 +16,11 @@
 #include "scheduler.h"
 #include "buffer.h"
 
+/**
+ * A data structure defining an arbiter.
+ */
+typedef struct arbiter arbiter_t;
+
 
 /**
  * Create a new arbiter. Adds itself to the scheduler with the requesteed period.
@@ -28,12 +33,19 @@
  * @param num_inputs The length of the inputs array.
  * @param output The output buffer into which values should be placed.
  */
-void arbiter_create( scheduler_t *scheduler
-                   , ticks_t      period
-                   , buffer_t   **inputs
-                   , size_t       num_inputs
-                   , buffer_t    *output
-                   );
+arbiter_t *arbiter_create( scheduler_t *scheduler
+                         , ticks_t      period
+                         , buffer_t   **inputs
+                         , size_t       num_inputs
+                         , buffer_t    *output
+                         );
 
+
+/**
+ * Free the resources from an arbiter. Note that the scheduler this was
+ * registered with must also be freed as it will be left holding a reference to
+ * invalid tick/tock functions.
+ */
+void arbiter_free(arbiter_t *arbiter);
 
 #endif

@@ -28,6 +28,8 @@ START_TEST (test_time_progresses)
 	
 	// Finish at time num_ticks
 	ck_assert_int_eq(scheduler_get_ticks(s), num_ticks);
+	
+	scheduler_free(s);
 }
 END_TEST
 
@@ -99,6 +101,8 @@ START_TEST (test_schedule)
 			                , (num_ticks+period-1) / period);
 		}
 	}
+	
+	scheduler_free(s);
 }
 END_TEST
 
