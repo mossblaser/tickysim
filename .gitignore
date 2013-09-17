@@ -21,5 +21,22 @@ Session.vim
 
 # Executables
 *.exe
-*.out
-*.app
+src/tickysim
+tests/check_check
+
+# Autoconf litter
+Makefile
+Makefile.in
+/aclocal.m4
+/autom4te.cache/
+/compile
+/stamp-h1
+/config.h
+/config.h.in
+/config.log
+/config.status
+/configure
+/depcomp
+/install-sh
+/missing
+/*/.deps/
