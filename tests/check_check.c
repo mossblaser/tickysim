@@ -18,12 +18,12 @@ main(int argc, char *argv[])
 	// We need a single master suite from which the first suite runner is created.
 	Suite *master_suite = suite_create("master");
 	SRunner *sr = srunner_create(master_suite);
-	srunner_set_fork_status(sr, CK_NOFORK);
+	//srunner_set_fork_status(sr, CK_NOFORK);
 	
 	// Add all suites
 	srunner_add_suite(sr, make_arbiter_suite());
-	//srunner_add_suite(sr, make_buffer_suite());
-	//srunner_add_suite(sr, make_scheduler_suite());
+	srunner_add_suite(sr, make_buffer_suite());
+	srunner_add_suite(sr, make_scheduler_suite());
 	
 	// Run the tests
 	srunner_run_all(sr, CK_NORMAL);
