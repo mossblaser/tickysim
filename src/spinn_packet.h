@@ -7,6 +7,8 @@
 #ifndef SPINN_PACKET_H
 #define SPINN_PACKET_H
 
+#include "config.h"
+
 #include "spinn.h"
 
 
