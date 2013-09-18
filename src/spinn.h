@@ -26,6 +26,15 @@ typedef struct spinn_coord {
 	int y;
 } spinn_coord_t;
 
+/**
+ * As with spinn_coord_t but including a specification of the z vector.
+ */
+typedef struct spinn_full_coord {
+	int x;
+	int y;
+	int z;
+} spinn_full_coord_t;
+
 
 /**
  * Definitions of directions in a SpiNNaker system, in particular, this
@@ -44,9 +53,8 @@ typedef enum spinn_direction {
 	SPINN_WEST       = 3,
 	SPINN_SOUTH_WEST = 4,
 	SPINN_SOUTH      = 5,
-	SPINN_LOCAL      = -1,
+	SPINN_LOCAL      = 6,
 } spinn_direction_t;
-
 
 #endif
 
