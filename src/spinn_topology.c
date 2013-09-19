@@ -4,6 +4,7 @@
  * spinn_topology.c -- Utility functions for dealing with the SpiNNaker topology.
  */
 
+#include <stdlib.h>
 
 #include "config.h"
 
@@ -15,6 +16,7 @@
  * Internal functions.
  ******************************************************************************/
 
+// Swap a pair of variables of the same type.
 #define SWAP(a,b) do { (a)^=(b); (b)^=(a); (a)^=(b); } while(0)
 
 /**
@@ -51,4 +53,47 @@ spinn_full_coord_minimise(spinn_full_coord_t coord)
 	                           , coord.y - median
 	                           , coord.z - median
 	                           };
+}
+
+
+spinn_full_coord_t
+spinn_shortest_vector( spinn_coord_t s
+                     , spinn_coord_t t
+                     , spinn_coord_t system_size
+                     )
+{
+	// A terrible hack (inherited from gollywhomper). Re-center the world either
+	// so the source is in the bottom left corner, the center or such that it is
+	// just above the top/right of the system and compute the shortest vector in
+	// the same way you would for a normal grid. Pick the one of these which wins.
+	// The off-the-top-right test covers the corner cases when you wrap via the
+	// bottom-left and top-right images of the mesh.
+	spinn_coord_t centers[] = {
+		{0,               0},
+		{system_size.x/2, system_size.y/2},
+		{system_size.x,   system_size.y},
+	};
+	int num_centers = sizeof(centers)/sizeof(spinn_coord_t);
+	
+	spinn_full_coord_t best_path;
+	
+	for (int i = 0; i < num_centers; i++) {
+		// Re-center the source/target
+		spinn_full_coord_t rc_s = {centers[i].x, centers[i].y, 0};
+		spinn_full_coord_t rc_t = { ((t.x - s.x) + centers[i].x + system_size.x) % system_size.x
+		                          , ((t.y - s.y) + centers[i].y + system_size.y) % system_size.y
+		                          , 0
+		                          };
+		spinn_full_coord_t path = spinn_full_coord_minimise((spinn_full_coord_t){
+			rc_t.x - rc_s.x,
+			rc_t.y - rc_s.y,
+			rc_t.z - rc_s.z
+		});
+		
+		if (i == 0 || spinn_magnitude(path) < spinn_magnitude(best_path)) {
+			best_path = path;
+		}
+	}
+	
+	return best_path;
 }

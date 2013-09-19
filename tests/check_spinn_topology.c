@@ -106,6 +106,53 @@ START_TEST (test_full_coord_minimise)
 }
 END_TEST
 
+#define min(a,b) (((a)<(b)) ? (a) : (b))
+#define max(a,b) (((a)>(b)) ? (a) : (b))
+
+START_TEST (test_shortest_vector)
+{
+	const spinn_coord_t test_sizes[] = {
+		// Square systems
+		{1,1}, {2,2}, {3,3}, {8,8}, {9,9},
+		// Non-square systems
+		{1,1}, {1,2}, {1,3}, {4,5}, {4,6}, {4,7}, {4,8},
+		       {2,1}, {3,1}, {5,4}, {6,4}, {7,4}, {8,4},
+	};
+	const int num_tests = sizeof(test_sizes)/sizeof(spinn_coord_t);
+	
+	// For various sizes, exhaustively test the algorithm
+	for (int i = 0; i < num_tests; i++) {
+		for (int y1 = 0; y1 < test_sizes[i].y; y1++) {
+			for (int x1 = 0; x1 < test_sizes[i].x; x1++) {
+				for (int y2 = 0; y2 < test_sizes[i].y; y2++) {
+					for (int x2 = 0; x2 < test_sizes[i].x; x2++) {
+						// Figure out the vector
+						spinn_full_coord_t c = spinn_shortest_vector((spinn_coord_t){x1, y1}, (spinn_coord_t){x2, y2}, test_sizes[i]);
+						
+						// Test that the distance matches the theoretical result by Xiao
+						// in "Hexagonal and Pruned Torus Networks as Cayley Graphs" (2004)
+						int l = test_sizes[i].x;
+						int k = test_sizes[i].y;
+						int a = ((x2-x1) + l) % l;
+						int b = ((y2-y1) + k) % k;
+						// distance((0,0), (a,b)) =
+						int dist = min(min(min(max(a, b), max(l - a, k - b)), l - a + b), k + a - b);
+						ck_assert_int_eq(spinn_magnitude(c), dist);
+						
+						// Test that the vector actually reaches the intended destination
+						int x2_ = (((x1 + c.x) - c.z) + test_sizes[i].x) % test_sizes[i].x;
+						int y2_ = (((y1 + c.y) - c.z) + test_sizes[i].y) % test_sizes[i].y;
+						ck_assert_int_eq(x2, x2_);
+						ck_assert_int_eq(y2, y2_);
+					}
+				}
+			}
+		}
+	}
+	
+}
+END_TEST
+
 
 Suite *
 make_spinn_topology_suite(void)
@@ -118,6 +165,7 @@ make_spinn_topology_suite(void)
 	tcase_add_test(tc_core, test_next_cw);
 	tcase_add_test(tc_core, test_opposite);
 	tcase_add_test(tc_core, test_full_coord_minimise);
+	tcase_add_test(tc_core, test_shortest_vector);
 	
 	// Add each test case to the suite
 	suite_add_tcase(s, tc_core);
