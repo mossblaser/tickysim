@@ -63,15 +63,13 @@ spinn_shortest_vector( spinn_coord_t s
                      )
 {
 	// A terrible hack (inherited from gollywhomper). Re-center the world either
-	// so the source is in the bottom left corner, the center or such that it is
-	// just above the top/right of the system and compute the shortest vector in
-	// the same way you would for a normal grid. Pick the one of these which wins.
-	// The off-the-top-right test covers the corner cases when you wrap via the
-	// bottom-left and top-right images of the mesh.
+	// so the source is in the bottom left corner, the center or the top/right of
+	// the system. For each, compute the shortest vector in the same way you would
+	// for a normal grid. Pick the one of these which wins.
 	spinn_coord_t centers[] = {
 		{0,               0},
 		{system_size.x/2, system_size.y/2},
-		{system_size.x,   system_size.y},
+		{system_size.x-1, system_size.y-1},
 	};
 	int num_centers = sizeof(centers)/sizeof(spinn_coord_t);
 	
