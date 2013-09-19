@@ -13,10 +13,10 @@
  * A coordinate of a chip in a SpiNNaker system with each vector being as in the
  * following:
  *
- *      | y
- *      |
- *     / \
- *  z /   \ x
+ *  y \
+ *     \___ x
+ *     /
+ *  z /
  *
  * The 'z' vector is not given as it is non-orthogonal and is assumed to be set
  * to 0.
