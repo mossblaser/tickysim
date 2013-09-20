@@ -42,7 +42,7 @@ main(int argc, char *argv[])
 	for (int j = 0; j < 2; j++) {
 		// Insert a few items
 		for (int i = 0; i < 4; i++) {
-			buffer_push(b, (void *)buf_elements + i);
+			buffer_push(b, (void *)(buf_elements + i));
 			printf("  Buffer on insert [%d]=%c, empty=%d and full=%d\n",
 			       i, buf_elements[i], buffer_is_empty(b), buffer_is_full(b));
 		}
