@@ -3,6 +3,9 @@ TickySim
 
 A timing based interconnection network simulator.
 
+Note: In early development. Doesn't neccessarily do anything yet except compile
+(hopefully) pass unit tests...
+
 Build Instructions
 ------------------
 
