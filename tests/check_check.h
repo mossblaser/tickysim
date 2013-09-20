@@ -12,10 +12,10 @@
 #include "config.h"
 
 
-Suite * make_arbiter_suite(void);
-Suite * make_buffer_suite(void);
-Suite * make_scheduler_suite(void);
-Suite * make_spinn_topology_suite(void);
-Suite * make_spinn_router_suite(void);
+Suite *make_arbiter_suite(void);
+Suite *make_buffer_suite(void);
+Suite *make_scheduler_suite(void);
+Suite *make_spinn_topology_suite(void);
+Suite *make_spinn_router_suite(void);
 
 #endif
