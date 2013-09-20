@@ -27,11 +27,19 @@ typedef enum spinn_emg_state {
  * A SpiNNaker packet.
  */
 typedef struct spinn_packet {
-	// Emergency-routing state of the packet
-	spinn_emg_state_t emg_state;
+	// The intended inflection point of the packet's route
+	spinn_coord_t     inflection_point;
+	spinn_direction_t inflection_direction;
 	
 	// The intended destination of the packet
 	spinn_coord_t destination;
+	
+	// The direction the packet is currently heading (specifically, the last
+	// output port the packet was sent via.
+	spinn_direction_t direction;
+	
+	// Emergency-routing state of the packet
+	spinn_emg_state_t emg_state;
 	
 	// Packet payload
 	void *payload;

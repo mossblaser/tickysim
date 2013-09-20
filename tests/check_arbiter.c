@@ -38,7 +38,7 @@ buffer_t *output;
  * Set up the arbiter and its inputs before every test.
  */
 void
-setup(void)
+check_arbiter_setup(void)
 {
 	s = scheduler_create();
 	
@@ -58,7 +58,7 @@ setup(void)
 
 
 void
-teardown(void)
+check_arbiter_teardown(void)
 {
 	// Free evrything up
 	for (int i = 0; i < num_inputs; i++) {
@@ -182,7 +182,7 @@ make_arbiter_suite(void)
 	
 	// Add tests to the test case
 	TCase *tc_core = tcase_create("Core");
-	tcase_add_checked_fixture(tc_core, setup, teardown);
+	tcase_add_checked_fixture(tc_core, check_arbiter_setup, check_arbiter_teardown);
 	tcase_add_test(tc_core, test_single_period_forwarding);
 	tcase_add_test(tc_core, test_round_robbin);
 	tcase_add_test(tc_core, test_output_blocked);
