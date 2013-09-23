@@ -56,5 +56,16 @@ typedef enum spinn_direction {
 	SPINN_LOCAL      = 6,
 } spinn_direction_t;
 
+/**
+ * Packet emergency routing state. Evaluates to "true" iff being emergency
+ * routed.
+ */
+typedef enum spinn_emg_state {
+	SPINN_EMG_NORMAL = 0,
+	SPINN_EMG_FIRST_LEG,
+	SPINN_EMG_SECOND_LEG,
+} spinn_emg_state_t;
+
+
 #endif
 

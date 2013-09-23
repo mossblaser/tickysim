@@ -26,6 +26,7 @@ main(int argc, char *argv[])
 	srunner_add_suite(sr, make_scheduler_suite());
 	srunner_add_suite(sr, make_spinn_topology_suite());
 	srunner_add_suite(sr, make_spinn_router_suite());
+	srunner_add_suite(sr, make_spinn_packet_pool_suite());
 	
 	// Run the tests
 	srunner_run_all(sr, CK_NORMAL);
