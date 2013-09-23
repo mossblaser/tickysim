@@ -43,13 +43,13 @@ typedef struct spinn_packet {
 
 /**
  * Convenience function. Initialise a spinn_packet_t with the appropriate values
- * to cause it to be dimension-order routed from the source to target locations
+ * to cause it to be dimension-order routed from the source to destination locations
  * in a system of the specified size. Also resets all other fields to the values
  * expected of a new packet.
  */
 void spinn_packet_init_dor( spinn_packet_t *packet
                           , spinn_coord_t   source
-                          , spinn_coord_t   target
+                          , spinn_coord_t   destination
                           , spinn_coord_t   system_size
                           , void           *payload
                           );
@@ -90,7 +90,7 @@ spinn_packet_t *spinn_packet_pool_palloc(spinn_packet_pool_t *pool);
 void spinn_packet_pool_pfree(spinn_packet_pool_t *pool, spinn_packet_t *packet);
 
 /******************************************************************************
- * Packet generators/consumers
+ * Packet generators
  ******************************************************************************/
 
 /**
@@ -98,15 +98,10 @@ void spinn_packet_pool_pfree(spinn_packet_pool_t *pool, spinn_packet_t *packet);
  */
 typedef struct spinn_packet_gen spinn_packet_gen_t;
 
-/**
- * The internal data-structure of a packet consumer.
- */
-typedef struct spinn_packet_con spinn_packet_con_t;
-
 
 /**
  * Create a packet generator which produces packets destined for a cyclic
- * pattern of targets.
+ * pattern of destination.
  *
  * @param scheduler A scheduler into which the packet generator will schedule
  *                  itself.
@@ -120,8 +115,6 @@ typedef struct spinn_packet_con spinn_packet_con_t;
  * @param period The period at which the packet generator will run.
  * @param bernoulli_prob The probability with which a packet will be generated
  *                       when the packet generator runs.
- *
- * @param payload The payload to attach to each packet sent.
  */
 spinn_packet_gen_t *spinn_packet_gen_cyclic_create( scheduler_t         *scheduler
                                                   , buffer_t            *buffer
@@ -130,7 +123,6 @@ spinn_packet_gen_t *spinn_packet_gen_cyclic_create( scheduler_t         *schedul
                                                   , spinn_coord_t        system_size
                                                   , ticks_t              period
                                                   , double               bernoulli_prob
-                                                  , void                *payload
                                                   );
 
 
@@ -150,8 +142,6 @@ spinn_packet_gen_t *spinn_packet_gen_cyclic_create( scheduler_t         *schedul
  * @param period The period at which the packet generator will run.
  * @param bernoulli_prob The probability with which a packet will be generated
  *                       when the packet generator runs.
- *
- * @param payload The payload to attach to each packet sent.
  */
 spinn_packet_gen_t *spinn_packet_gen_uniform_create( scheduler_t         *scheduler
                                                    , buffer_t            *buffer
@@ -160,12 +150,22 @@ spinn_packet_gen_t *spinn_packet_gen_uniform_create( scheduler_t         *schedu
                                                    , spinn_coord_t        system_size
                                                    , ticks_t              period
                                                    , double               bernoulli_prob
-                                                   , void                *payload
                                                    );
 
 /**
  * Free the resources used by a packet generator.
  */
 void spinn_packet_gen_free(spinn_packet_gen_t *packet_gen);
+
+
+
+/******************************************************************************
+ * Packet consumers
+ ******************************************************************************/
+
+/**
+ * The internal data-structure of a packet consumer.
+ */
+typedef struct spinn_packet_con spinn_packet_con_t;
 
 #endif

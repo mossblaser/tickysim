@@ -17,7 +17,8 @@ check_check_SOURCES += check_scheduler.c $(top_builddir)/src/scheduler.c $(top_b
 check_check_SOURCES += $(top_builddir)/src/spinn.h
 check_check_SOURCES += check_spinn_topology.c $(top_builddir)/src/spinn_topology.c $(top_builddir)/src/spinn_topology.h
 check_check_SOURCES += check_spinn_router.c $(top_builddir)/src/spinn_router.c $(top_builddir)/src/spinn_router.h
-check_check_SOURCES += check_spinn_packet_pool.c $(top_builddir)/src/spinn_packet.c $(top_builddir)/src/spinn_packet.h
+check_check_SOURCES += check_spinn_packet_init_dor.c $(top_builddir)/src/spinn_packet.c $(top_builddir)/src/spinn_packet.h
+check_check_SOURCES += check_spinn_packet_pool.c
 
 # Build with the check library flags and library
 check_check_CFLAGS = @CHECK_CFLAGS@ -Wall -pedantic
