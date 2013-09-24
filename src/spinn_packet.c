@@ -395,6 +395,16 @@ spinn_packet_gen_uniform_create( scheduler_t         *s
 	return g;
 }
 
+
+void
+spinn_packet_gen_set_bernoulli_prob( spinn_packet_gen_t *g
+                                   , double              bernoulli_prob
+                                   )
+{
+	g->bernoulli_prob = bernoulli_prob;
+}
+
+
 void
 spinn_packet_gen_free(spinn_packet_gen_t *g)
 {
@@ -472,6 +482,15 @@ spinn_packet_con_create( scheduler_t             *s
 	                  );
 	
 	return c;
+}
+
+
+void
+spinn_packet_con_set_bernoulli_prob( spinn_packet_con_t *c
+                                   , double              bernoulli_prob
+                                   )
+{
+	c->bernoulli_prob = bernoulli_prob;
 }
 
 

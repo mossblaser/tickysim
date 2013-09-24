@@ -169,6 +169,14 @@ spinn_packet_gen_t *spinn_packet_gen_uniform_create( scheduler_t         *schedu
                                                    );
 
 /**
+ * Change the bernoulli_prob of generating a packet. This should be called
+ * outside of the simulation tick/tock phases for deterministic behaviour.
+ */
+void spinn_packet_gen_set_bernoulli_prob( spinn_packet_gen_t *packet_gen
+                                        , double              bernoulli_prob
+                                        );
+
+/**
  * Free the resources used by a packet generator.
  */
 void spinn_packet_gen_free(spinn_packet_gen_t *packet_gen);
@@ -210,6 +218,15 @@ spinn_packet_con_t *spinn_packet_con_create( scheduler_t         *scheduler
                                            , void (*on_packet_con)(spinn_packet_t *packet, void *data)
                                            , void *on_packet_con_data
                                            );
+
+/**
+ * Change the bernoulli_prob of consuming a packet. This should be called
+ * outside of the simulation tick/tock phases for deterministic behaviour.
+ */
+void spinn_packet_con_set_bernoulli_prob( spinn_packet_con_t *packet_con
+                                        , double              bernoulli_prob
+                                        );
+
 
 /**
  * Free the resources used by a packet consumer.
