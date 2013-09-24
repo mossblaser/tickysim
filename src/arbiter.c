@@ -20,30 +20,6 @@
 
 
 /******************************************************************************
- * Internal datastructures.
- ******************************************************************************/
-
-/**
- * The structure representing a particular arbiter. Includes the index of the
- * last input handled.
- *
- * The field handle_input is a bool set by the tick function and specifies
- * whether a value from the input is to be forwarded by the tock function. If it
- * is true, the input indicated by last_input will have its value forwarded to
- * the output.
- */
-struct arbiter {
-	buffer_t **inputs;
-	size_t     num_inputs;
-	buffer_t  *output;
-	
-	size_t last_input;
-	
-	bool handle_input;
-};
-
-
-/******************************************************************************
  * Private functions.
  ******************************************************************************/
 
@@ -101,17 +77,15 @@ arbiter_tock(void *a_)
  * Public functions.
  ******************************************************************************/
 
-arbiter_t *
-arbiter_create( scheduler_t *s
-              , ticks_t      period
-              , buffer_t   **inputs
-              , size_t       num_inputs
-              , buffer_t    *output
-              )
+void
+arbiter_init( arbiter_t   *a
+            , scheduler_t *s
+            , ticks_t      period
+            , buffer_t   **inputs
+            , size_t       num_inputs
+            , buffer_t    *output
+            )
 {
-	arbiter_t *a = malloc(sizeof(arbiter_t));
-	assert(a != NULL);
-	
 	// Copy the input array into a local copy
 	a->inputs = calloc(num_inputs, sizeof(buffer_t *));
 	assert(a->inputs != NULL);
@@ -134,17 +108,11 @@ arbiter_create( scheduler_t *s
 	                  , arbiter_tick, (void *)a
 	                  , arbiter_tock, (void *)a
 	                  );
-	
-	return a;
 }
 
 
-
-
-
 void
-arbiter_free( arbiter_t *a)
+arbiter_destroy( arbiter_t *a)
 {
 	free(a->inputs);
-	free(a);
 }

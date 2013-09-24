@@ -23,7 +23,7 @@ const ticks_t period = 3;
 scheduler_t s;
 
 // The arbiter
-arbiter_t *a;
+arbiter_t a;
 
 // Input buffers (and the number of them)
 #define NUM_INPUTS 3
@@ -53,7 +53,7 @@ check_arbiter_setup(void)
 	buffer_init(&output, buf_len);
 	
 	// Create arbiter
-	a = arbiter_create(&s, period, inputs_p, NUM_INPUTS, &output);
+	arbiter_init(&a, &s, period, inputs_p, NUM_INPUTS, &output);
 }
 
 
@@ -65,7 +65,7 @@ check_arbiter_teardown(void)
 		buffer_destroy(&(inputs[i]));
 	}
 	buffer_destroy(&output);
-	arbiter_free(a);
+	arbiter_destroy(&a);
 	scheduler_destroy(&s);
 }
 
