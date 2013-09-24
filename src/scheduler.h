@@ -17,11 +17,6 @@
 
 #include "config.h"
 
-/**
- * A structure which defines a particular instance of a scheduler.
- */
-typedef struct scheduler scheduler_t;
-
 
 /**
  * The type of a time in ticks as used in the simulator.
@@ -30,15 +25,25 @@ typedef unsigned int ticks_t;
 
 
 /**
- * Create a new (initalised) scheduler instance struct.
+ * A structure which defines a particular instance of a scheduler.
  */
-scheduler_t *scheduler_create(void);
+typedef struct scheduler scheduler_t;
+
+
+// Concrete definitions of the above types
+#include "scheduler_internal.h"
 
 
 /**
- * Free a scheduler interface.
+ * Initialise a new scheduler instance struct.
  */
-void scheduler_free(scheduler_t *scheduler);
+void scheduler_init(scheduler_t *scheduler);
+
+
+/**
+ * Free memory associated with a scheduler interface.
+ */
+void scheduler_destroy(scheduler_t *scheduler);
 
 
 /**

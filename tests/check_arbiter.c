@@ -20,7 +20,7 @@ const size_t buf_len = 4;
 const ticks_t period = 3;
 
 // The scheduler to use
-scheduler_t *s;
+scheduler_t s;
 
 // The arbiter
 arbiter_t *a;
@@ -41,7 +41,7 @@ buffer_t output;
 void
 check_arbiter_setup(void)
 {
-	s = scheduler_create();
+	scheduler_init(&s);
 	
 	// Create input buffers
 	for (int i = 0; i < NUM_INPUTS; i++) {
@@ -53,7 +53,7 @@ check_arbiter_setup(void)
 	buffer_init(&output, buf_len);
 	
 	// Create arbiter
-	a = arbiter_create(s, period, inputs_p, NUM_INPUTS, &output);
+	a = arbiter_create(&s, period, inputs_p, NUM_INPUTS, &output);
 }
 
 
@@ -66,7 +66,7 @@ check_arbiter_teardown(void)
 	}
 	buffer_destroy(&output);
 	arbiter_free(a);
-	scheduler_free(s);
+	scheduler_destroy(&s);
 }
 
 
@@ -88,7 +88,7 @@ START_TEST (test_single_period_forwarding)
 		// Output buffer should never end up full until after the last tick
 		ck_assert(!buffer_is_full(&output));
 		
-		scheduler_tick_tock(s);
+		scheduler_tick_tock(&s);
 	}
 	
 	// After the last tick, the input should have emptied into the output
@@ -117,7 +117,7 @@ START_TEST (test_round_robbin)
 	
 	// Run the simulation for exactly the correct number of cycles
 	for (int i = 0; i < (NUM_INPUTS-1)*period + 1; i++) {
-		scheduler_tick_tock(s);
+		scheduler_tick_tock(&s);
 	}
 	
 	// Check the values in the output buffer correspond to each input in turn.
@@ -150,7 +150,7 @@ START_TEST (test_output_blocked)
 	// Run the simulation for one period allowing it one attempt at clearing the
 	// packet.
 	for (int i = 0; i < period + 1; i++) {
-		scheduler_tick_tock(s);
+		scheduler_tick_tock(&s);
 	}
 	
 	// Check that the input buffer did not empty
@@ -164,7 +164,7 @@ START_TEST (test_output_blocked)
 	// Run the simulation for one period allowing it one attempt at clearing the
 	// packet.
 	for (int i = 0; i < period + 1; i++) {
-		scheduler_tick_tock(s);
+		scheduler_tick_tock(&s);
 	}
 	
 	// Check that the input buffer did empty this time

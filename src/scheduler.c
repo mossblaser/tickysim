@@ -19,58 +19,6 @@
 
 #include "scheduler.h"
 
-/******************************************************************************
- * Internal datastructures.
- ******************************************************************************/
-
-
-/**
- * Internal datastructure.
- *
- * An event which can be added to the schedule. Consists of two callable
- * functions to be called at a regular interval along with void pointer to be
- * passed to the functions.
- *
- * All "tick" functions will be called before any "tock" function is called.
- * These should typically correspond to reading and writing state. Functions may
- * be NULL in which case they won't be called.
- *
- * Internally these structs form an element of a linked list of events.
- */
-typedef struct event {
-	void (*tick)(void *data);
-	void *tick_data;
-	
-	void (*tock)(void *data);
-	void *tock_data;
-	
-	struct event *next_event;
-} event_t;
-
-
-/**
- * Internal datastructure.
- *
- * A linked list of period/event_t tuples.
- */
-typedef struct schedule {
-	ticks_t  period;
-	event_t *events;
-	
-	struct schedule *next_schedule;
-} schedule_t;
-
-
-/**
- * The "main" data-structure of a scheduler.
- */
-struct scheduler {
-	/* A pointer to the start of the linked list of schedule_t structs. */
-	schedule_t *schedules;
-	
-	/* The current simulation time */
-	ticks_t ticks;
-};
 
 
 /******************************************************************************
@@ -113,22 +61,17 @@ get_schedule(scheduler_t *s, ticks_t period)
  ******************************************************************************/
 
 
-scheduler_t *
-scheduler_create(void)
+void
+scheduler_init(scheduler_t *s)
 {
-	scheduler_t *s = malloc(sizeof(scheduler_t));
-	assert(s != NULL);
-	
 	// Initialise the structure
 	s->ticks     = 0;
 	s->schedules = NULL;
-	
-	return s;
 }
 
 
 void
-scheduler_free(scheduler_t *s)
+scheduler_destroy(scheduler_t *s)
 {
 	// Free the schedule/event structures within.
 	schedule_t *schedule = s->schedules;
@@ -146,9 +89,6 @@ scheduler_free(scheduler_t *s)
 		free(schedule);
 		schedule = next_schedule;
 	}
-	
-	// Free the container
-	free(s);
 }
 
 

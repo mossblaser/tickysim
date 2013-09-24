@@ -25,8 +25,6 @@ buffer_init(buffer_t *b, size_t size)
 	b->size = size;
 	b->head = 0;
 	b->tail = 0;
-	
-	return b;
 }
 
 

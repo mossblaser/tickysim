@@ -24,7 +24,7 @@
 
 #define BUFFER_SIZE 10
 
-scheduler_t *s;
+scheduler_t s;
 buffer_t b;
 spinn_packet_pool_t *pool;
 spinn_packet_con_t *c;
@@ -34,7 +34,7 @@ int packets_received;
 void
 check_spinn_packet_con_setup(void)
 {
-	s    = scheduler_create();
+	scheduler_init(&s);
 	buffer_init(&b, BUFFER_SIZE);
 	pool = spinn_packet_pool_create();
 	c    = NULL;
@@ -45,7 +45,7 @@ check_spinn_packet_con_setup(void)
 void
 check_spinn_packet_con_teardown(void)
 {
-	scheduler_free(s);
+	scheduler_destroy(&s);
 	buffer_destroy(&b);
 	spinn_packet_pool_free(pool);
 	spinn_packet_con_free(c);
@@ -67,7 +67,7 @@ on_packet_con(spinn_packet_t *p, void *data)
 
 // Create a packet generator with most arguments set to sensible defaults.
 #define INIT_CON(bernoulli_prob) \
-	c = spinn_packet_con_create( s, &b, pool \
+	c = spinn_packet_con_create( &s, &b, pool \
 	                           , PERIOD, (bernoulli_prob) \
 	                           , on_packet_con, (void *)1234 \
 	                           )
@@ -86,7 +86,7 @@ START_TEST (test_idle)
 		buffer_push(&b, spinn_packet_pool_palloc(pool));
 	
 	for (int i = 0; i < PERIOD * 10; i++)
-		scheduler_tick_tock(s);
+		scheduler_tick_tock(&s);
 	
 	// Make sure nothing got received...
 	ck_assert(buffer_is_full(&b));
@@ -109,14 +109,14 @@ START_TEST (test_active)
 	
 	// Make sure all packets are accepted in the expected timeframe
 	for (int i = 0; i < PERIOD * BUFFER_SIZE; i++)
-		scheduler_tick_tock(s);
+		scheduler_tick_tock(&s);
 	ck_assert(buffer_is_empty(&b));
 	
 	ck_assert_int_eq(packets_received, BUFFER_SIZE);
 	
 	// Make sure nothing catches fire when the buffer is empty
 	for (int i = 0; i < PERIOD * BUFFER_SIZE; i++)
-		scheduler_tick_tock(s);
+		scheduler_tick_tock(&s);
 	
 	ck_assert_int_eq(packets_received, BUFFER_SIZE);
 }
@@ -139,7 +139,7 @@ START_TEST (test_50_50)
 		buffer_push(&b, spinn_packet_pool_palloc(pool));
 	
 	for (int i = 0; i < PERIOD * BUFFER_SIZE; i++)
-		scheduler_tick_tock(s);
+		scheduler_tick_tock(&s);
 	
 	// Make sure some packets got accepted and others didn't
 	ck_assert(!buffer_is_empty(&b));

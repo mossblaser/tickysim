@@ -29,7 +29,7 @@
 
 #define OUT_BUFFER_SIZE 2
 
-scheduler_t *s;
+scheduler_t s;
 buffer_t input;
 buffer_t outputs[7];
 buffer_t *outputs_p[7];
@@ -79,7 +79,7 @@ void
 check_spinn_router_setup(void)
 {
 	r = NULL;
-	s = scheduler_create();
+	scheduler_init(&s);
 	
 	// Create input buffer long enough to completely fill the output buffers and
 	// then block
@@ -101,7 +101,7 @@ check_spinn_router_setup(void)
 void
 check_spinn_router_teardown(void)
 {
-	scheduler_free(s);
+	scheduler_destroy(&s);
 	buffer_destroy(&input);
 	for (int i = 0; i < 7; i++)
 		buffer_destroy(&(outputs[i]));
@@ -127,7 +127,7 @@ on_forward( spinn_router_t    *router
 	
 	// Update the last_on_forward
 	last_on_forward.num_calls ++;
-	last_on_forward.time      = scheduler_get_ticks(s);
+	last_on_forward.time      = scheduler_get_ticks(&s);
 	last_on_forward.packet    = packet;
 }
 
@@ -150,7 +150,7 @@ on_drop( spinn_router_t *router
 	
 	// Update the last_on_forward
 	last_on_drop.num_calls ++;
-	last_on_drop.time      = scheduler_get_ticks(s);
+	last_on_drop.time      = scheduler_get_ticks(&s);
 	last_on_drop.packet    = packet;
 }
 
@@ -161,7 +161,7 @@ on_drop( spinn_router_t *router
 
 // Create a router with most arguments set to sensible defaults.
 #define INIT_ROUTER(use_emg_routing, on_forward, on_drop) \
-	r = spinn_router_create( s, ROUTER_PERIOD \
+	r = spinn_router_create( &s, ROUTER_PERIOD \
 	                       , &input, outputs_p \
 	                       , ((spinn_coord_t){0,0}) \
 	                       , (use_emg_routing) \
@@ -180,7 +180,7 @@ START_TEST (test_idle)
 	
 	// Run for such a time that if anything tried to time out, it would have
 	for (int i = 0; i < ROUTER_PERIOD*(FIRST_TIMEOUT + FINAL_TIMEOUT)*2; i++)
-		scheduler_tick_tock(s);
+		scheduler_tick_tock(&s);
 	
 	// No callbacks should have occurred
 	ck_assert_int_eq(last_on_forward.num_calls, 0);
@@ -213,7 +213,7 @@ START_TEST (test_single_normal_packet)
 	buffer_push(&input, (void *)&p);
 	
 	// Lets see what happens
-	scheduler_tick_tock(s);
+	scheduler_tick_tock(&s);
 	
 	// Make sure the right buffers are occupied
 	ck_assert(buffer_is_empty(&input));
@@ -244,7 +244,7 @@ START_TEST (test_single_normal_packet)
 	
 	// Make sure nothing else happens
 	for (int i = 0; i < ROUTER_PERIOD*(FIRST_TIMEOUT + FINAL_TIMEOUT)*2; i++)
-		scheduler_tick_tock(s);
+		scheduler_tick_tock(&s);
 	
 	// Make sure no buffers became occupied
 	ck_assert(buffer_is_empty(&input));
@@ -291,7 +291,7 @@ START_TEST (test_multiple_normal_packet)
 		for (int direction = 0; direction < 6; direction++) {
 			// Run the simulation for a router cycle 
 			for (int j = 0; j < ROUTER_PERIOD; j++)
-				scheduler_tick_tock(s);
+				scheduler_tick_tock(&s);
 			
 			// A packet should have been forwarded
 			ck_assert(last_on_forward.packet != NULL);
@@ -355,7 +355,7 @@ START_TEST (test_normal_packet_arrival)
 		for (int direction = 0; direction < 7; direction++) {
 			// Run the simulation for a router cycle 
 			for (int j = 0; j < ROUTER_PERIOD; j++)
-				scheduler_tick_tock(s);
+				scheduler_tick_tock(&s);
 			
 			// A packet should have been forwarded
 			ck_assert(last_on_forward.packet != NULL);
@@ -436,14 +436,14 @@ START_TEST (test_normal_packet_drop)
 		for (int direction = 0; direction < 7; direction++) {
 			// Run the simulation for as long as it should take to time out
 			for (int j = 0; j < (ROUTER_PERIOD * (drop_cycles + 1)); j++)
-				scheduler_tick_tock(s);
+				scheduler_tick_tock(&s);
 			
 			// Check the packet got dropped
 			ck_assert(last_on_drop.packet != NULL);
 			ck_assert(last_on_drop.packet == p);
 			
 			// And that it got dropped on exactly this router cycle
-			ck_assert_int_eq(last_on_drop.time, scheduler_get_ticks(s) - ROUTER_PERIOD);
+			ck_assert_int_eq(last_on_drop.time, scheduler_get_ticks(&s) - ROUTER_PERIOD);
 			
 			// Advance to the next packet
 			p++;
@@ -489,7 +489,7 @@ START_TEST (test_emg_first_leg)
 	
 	// See that the packet is forwarded after timing out to the emergency port
 	for (int j = 0; j < (ROUTER_PERIOD * (FIRST_TIMEOUT + 1)); j++)
-		scheduler_tick_tock(s);
+		scheduler_tick_tock(&s);
 	
 	// Make sure the correct callbacks occurred
 	ck_assert_int_eq(last_on_drop.num_calls,    0);
@@ -502,7 +502,7 @@ START_TEST (test_emg_first_leg)
 	
 	// And that it got forwarded on exactly this router cycle (when it was
 	// expected)
-	ck_assert_int_eq(last_on_forward.time, scheduler_get_ticks(s) - ROUTER_PERIOD);
+	ck_assert_int_eq(last_on_forward.time, scheduler_get_ticks(&s) - ROUTER_PERIOD);
 }
 END_TEST
 
@@ -530,7 +530,7 @@ START_TEST (test_emg_second_leg)
 	
 	// See that the packet is forwarded immediately
 	for (int j = 0; j < ROUTER_PERIOD; j++)
-		scheduler_tick_tock(s);
+		scheduler_tick_tock(&s);
 	
 	// Make sure the correct callbacks occurred
 	ck_assert_int_eq(last_on_drop.num_calls,    0);

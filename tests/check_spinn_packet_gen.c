@@ -29,7 +29,7 @@
 #define SYSTEM_SIZE_Y 7
 #define SYSTEM_SIZE ((spinn_coord_t){SYSTEM_SIZE_X,SYSTEM_SIZE_Y})
 
-scheduler_t *s;
+scheduler_t s;
 buffer_t b;
 spinn_packet_pool_t *pool;
 spinn_packet_gen_t *g;
@@ -39,7 +39,7 @@ int packets_sent;
 void
 check_spinn_packet_gen_setup(void)
 {
-	s    = scheduler_create();
+	scheduler_init(&s);
 	buffer_init(&b, BUFFER_SIZE);
 	pool = spinn_packet_pool_create();
 	g    = NULL;
@@ -50,7 +50,7 @@ check_spinn_packet_gen_setup(void)
 void
 check_spinn_packet_gen_teardown(void)
 {
-	scheduler_free(s);
+	scheduler_destroy(&s);
 	buffer_destroy(&b);
 	spinn_packet_pool_free(pool);
 	spinn_packet_gen_free(g);
@@ -74,7 +74,7 @@ on_packet_gen(spinn_packet_t *p, void *data)
 
 // Create a packet generator with most arguments set to sensible defaults.
 #define INIT_GEN(create_func, bernoulli_prob) \
-	g = (create_func)( s, &b, pool \
+	g = (create_func)( &s, &b, pool \
 	                 , POSITION, SYSTEM_SIZE \
 	                 , PERIOD, (bernoulli_prob) \
 	                 , on_packet_gen, (void *)1234 \
@@ -94,7 +94,7 @@ START_TEST (test_idle)
 	}
 	
 	for (int i = 0; i < PERIOD * 10; i++)
-		scheduler_tick_tock(s);
+		scheduler_tick_tock(&s);
 	
 	// Make sure nothing got sent...
 	ck_assert(buffer_is_empty(&b));
@@ -119,7 +119,7 @@ START_TEST (test_certain)
 	for (int i = 0; i < BUFFER_SIZE + 1; i++) {
 		// Run the generator for a single period
 		for (int j = 0; j < PERIOD; j++)
-			scheduler_tick_tock(s);
+			scheduler_tick_tock(&s);
 		
 		// A packet should have arrived
 		ck_assert(!buffer_is_empty(&b));
@@ -151,7 +151,7 @@ START_TEST (test_50_50)
 	// Run for long enough that the buffer would end up full if the probability
 	// was 1.0.
 	for (int i = 0; i < PERIOD*BUFFER_SIZE; i++)
-		scheduler_tick_tock(s);
+		scheduler_tick_tock(&s);
 	
 	// Should have sent less than the maximum and more than the minimum
 	ck_assert(!buffer_is_empty(&b));
@@ -177,7 +177,7 @@ START_TEST (test_cyclic_dist)
 	// Run for long enough that every node should be visited twice
 	for (int i = 0; i < SYSTEM_SIZE.x*SYSTEM_SIZE.y*2; i++) {
 		for (int j = 0; j < PERIOD; j++)
-			scheduler_tick_tock(s);
+			scheduler_tick_tock(&s);
 		
 		// A packet should have arrived, note its posiiton
 		ck_assert(!buffer_is_empty(&b));

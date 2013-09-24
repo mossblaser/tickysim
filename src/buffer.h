@@ -13,42 +13,12 @@
 #include "config.h"
 
 /**
- * *** Do not access these fields directly. ***
- *
- * A structure defining a particular instance of a buffer.
- *
- * Contains an array of values size+1 in length with pointers to the head and
- * tail of values in the buffer. The head points to the next empty space and the
- * tail points to the next value to be retreived from the buffer.
- *
- * Empty: (pointers overlapping)
- *   ,-----------------,
- *   |  |  |  |  |  |  |
- *   '-----------------'
- *     |
- *    tail+head
- *
- * Part-filled: (pointers not overlapping or adjacent)
- *   ,-----------------,
- *   |##|##|##|  |  |  |
- *   '-----------------'
- *     |        |
- *    tail     head
- *
- * Full: (pointers adjacent)
- *   ,-----------------,
- *   |##|##|##|##|##|  |
- *   '-----------------'
- *     |              |
- *    tail          head
+ * An instance of a buffer.
  */
-typedef struct buffer {
-	void   **values;
-	size_t   size;
-	int      head;
-	int      tail;
-} buffer_t;
+typedef struct buffer buffer_t;
 
+// Concrete definitions of the above types
+#include "buffer_internal.h"
 
 /**
  * Initialise a buffer of the specified length.
