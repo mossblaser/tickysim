@@ -8,6 +8,7 @@
 #include "config.h"
 
 #include <assert.h>
+#include <stdlib.h>
 #include <stdbool.h>
 
 #include "scheduler.h"
@@ -234,10 +235,10 @@ spinn_packet_pool_pfree( spinn_packet_pool_t *pool
 void
 spinn_packet_gen_tick(void *g_)
 {
-	spinn_packet_gen_t *g = (spinn_packet_gen_t *)g;
+	spinn_packet_gen_t *g = (spinn_packet_gen_t *)g_;
 	
-	// XXX: TODO: Bernoulli test
-	g->send_packet = !buffer_is_full(g->buffer);
+	g->send_packet = !buffer_is_full(g->buffer)
+	              && (((double)rand())/((double)RAND_MAX+1.0)) <= g->bernoulli_prob;
 }
 
 /**
@@ -247,9 +248,43 @@ spinn_packet_gen_tick(void *g_)
 void
 spinn_packet_gen_tock(void *g_)
 {
-	spinn_packet_gen_t *g = (spinn_packet_gen_t *)g;
+	spinn_packet_gen_t *g = (spinn_packet_gen_t *)g_;
 	
-	// XXX: TODO: make and send a packet
+	// Do nothing if no packet due to be sent
+	if (!g->send_packet)
+		return;
+	
+	// Determine the packet destination based on the current distribution
+	spinn_coord_t destination;
+	switch (g->dist) {
+		case SPINN_DIST_CYCLIC:
+			destination = g->dist_data.cyclic.next_dest;
+			
+			// Move to the next node
+			g->dist_data.cyclic.next_dest.x ++;
+			if (g->dist_data.cyclic.next_dest.x >= g->system_size.x) {
+				g->dist_data.cyclic.next_dest.x = 0;
+				g->dist_data.cyclic.next_dest.y ++;
+				if (g->dist_data.cyclic.next_dest.y >= g->system_size.y) {
+					g->dist_data.cyclic.next_dest.y = 0;
+				}
+			}
+			break;
+		
+		default:
+		case SPINN_DIST_UNIFORM:
+			destination.x = (int)((((double)rand())/((double)RAND_MAX+1.0)) * g->system_size.x);
+			destination.y = (int)((((double)rand())/((double)RAND_MAX+1.0)) * g->system_size.y);
+			break;
+	}
+	
+	// Produce and send the packet
+	spinn_packet_t *p = spinn_packet_pool_palloc(g->pool);
+	spinn_packet_init_dor(p, g->position, destination, g->system_size, NULL);
+	buffer_push(g->buffer, (void *)p);
+	
+	// Clear the flag
+	g->send_packet = false;
 }
 
 /**

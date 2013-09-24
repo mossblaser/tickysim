@@ -19,5 +19,6 @@ Suite *make_spinn_topology_suite(void);
 Suite *make_spinn_router_suite(void);
 Suite *make_spinn_packet_init_dor(void);
 Suite *make_spinn_packet_pool_suite(void);
+Suite *make_spinn_packet_gen_suite(void);
 
 #endif
