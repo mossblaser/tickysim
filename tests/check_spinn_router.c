@@ -38,7 +38,7 @@ buffer_t *outputs_p[7];
 #define NUM_PACKETS ((7*OUT_BUFFER_SIZE*2) + 1)
 spinn_packet_t packets[NUM_PACKETS];
 
-spinn_router_t *r;
+spinn_router_t r;
 
 
 // A record of a call to on_forward
@@ -78,7 +78,6 @@ on_drop_debug_data_t last_on_drop;
 void
 check_spinn_router_setup(void)
 {
-	r = NULL;
 	scheduler_init(&s);
 	
 	// Create input buffer long enough to completely fill the output buffers and
@@ -105,8 +104,7 @@ check_spinn_router_teardown(void)
 	buffer_destroy(&input);
 	for (int i = 0; i < 7; i++)
 		buffer_destroy(&(outputs[i]));
-	if (r != NULL)
-		spinn_router_free(r);
+	spinn_router_destroy(&r);
 }
 
 /**
@@ -123,7 +121,7 @@ on_forward( spinn_router_t    *router
 	ck_assert((on_forward_debug_data_t *)data == &last_on_forward);
 	
 	// Make sure the router is correct
-	ck_assert(r == router);
+	ck_assert(&r == router);
 	
 	// Update the last_on_forward
 	last_on_forward.num_calls ++;
@@ -146,7 +144,7 @@ on_drop( spinn_router_t *router
 	ck_assert((on_drop_debug_data_t *)data == &last_on_drop);
 	
 	// Make sure the router is correct
-	ck_assert(r == router);
+	ck_assert(&r == router);
 	
 	// Update the last_on_forward
 	last_on_drop.num_calls ++;
@@ -161,14 +159,14 @@ on_drop( spinn_router_t *router
 
 // Create a router with most arguments set to sensible defaults.
 #define INIT_ROUTER(use_emg_routing, on_forward, on_drop) \
-	r = spinn_router_create( &s, ROUTER_PERIOD \
-	                       , &input, outputs_p \
-	                       , ((spinn_coord_t){0,0}) \
-	                       , (use_emg_routing) \
-	                       , FIRST_TIMEOUT, FINAL_TIMEOUT \
-	                       , (on_forward), (void *)&last_on_forward \
-	                       , (on_drop),    (void *)&last_on_drop \
-	                       )
+	spinn_router_init( &r, &s, ROUTER_PERIOD \
+	                 , &input, outputs_p \
+	                 , ((spinn_coord_t){0,0}) \
+	                 , (use_emg_routing) \
+	                 , FIRST_TIMEOUT, FINAL_TIMEOUT \
+	                 , (on_forward), (void *)&last_on_forward \
+	                 , (on_drop),    (void *)&last_on_drop \
+	                 )
 
 
 /**

@@ -22,6 +22,11 @@
  */
 typedef struct spinn_router spinn_router_t;
 
+
+// Concrete definitions of the above types
+#include "spinn_router_internal.h"
+
+
 /**
  * A model of a router core in a SpiNNaker system. Takes spinn_packet_t pointers
  * from a single input buffer and routes them to one of the provided output
@@ -62,25 +67,26 @@ typedef struct spinn_router spinn_router_t;
  * @param on_drop_data The user-defined data to pass along with the on_drop
  *                     callback.
  */
-spinn_router_t *spinn_router_create( scheduler_t   *scheduler
-                                   , ticks_t        period
-                                   , buffer_t      *input
-                                   , buffer_t      *outputs[7]
-                                   , spinn_coord_t  position
-                                   , bool           use_emg_routing
-                                   , int            first_timeout
-                                   , int            final_timeout
-                                   , void           (*on_forward)( spinn_router_t    *router
-                                                                 , spinn_packet_t    *packet
-                                                                 , void              *data
-                                                                 )
-                                   , void           *on_forward_data
-                                   , void           (*on_drop)( spinn_router_t *router
-                                                              , spinn_packet_t *packet
-                                                              , void           *data
-                                                              )
-                                   , void           *on_drop_data
-                                   );
+void spinn_router_init( spinn_router_t *router
+                      , scheduler_t    *scheduler
+                      , ticks_t         period
+                      , buffer_t       *input
+                      , buffer_t       *outputs[7]
+                      , spinn_coord_t   position
+                      , bool            use_emg_routing
+                      , int             first_timeout
+                      , int             final_timeout
+                      , void            (*on_forward)( spinn_router_t    *router
+                                                     , spinn_packet_t    *packet
+                                                     , void              *data
+                                                     )
+                      , void            *on_forward_data
+                      , void            (*on_drop)( spinn_router_t *router
+                                                  , spinn_packet_t *packet
+                                                  , void           *data
+                                                  )
+                      , void            *on_drop_data
+                      );
 
 
 /**
@@ -94,6 +100,6 @@ spinn_coord_t router_get_position(spinn_router_t *router);
  * will become invalid and so the scheduler should not be used after a call to
  * this function.
  */
-void spinn_router_free(spinn_router_t *router);
+void spinn_router_destroy(spinn_router_t *router);
 
 #endif

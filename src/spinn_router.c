@@ -21,63 +21,6 @@
 #include "spinn_router.h"
 
 /******************************************************************************
- * Internal datastructures.
- ******************************************************************************/
-
-/**
- * The structure representing a particular router. 
- */
-struct spinn_router {
-	// Ports (expected to supply/accept spinn_packet_t pointers.
-	buffer_t *input;
-	buffer_t *outputs[7];
-	
-	// Location of the router in the system
-	spinn_coord_t position;
-	
-	// Enable emergency routing (rather than just dropping out after
-	// first_timeout.
-	bool use_emg_routing;
-	
-	// Timeouts (measured in router periods)
-	int first_timeout;
-	int final_timeout;
-	
-	// Packet-forwarded callback
-	void (*on_forward)( spinn_router_t    *router
-	                  , spinn_packet_t    *packet
-	                  , void              *data
-	                  );
-	void *on_forward_data;
-	
-	// Packet-droping callback
-	void (*on_drop)( spinn_router_t *router
-	               , spinn_packet_t *packet
-	               , void           *data
-	               );
-	void *on_drop_data;
-	
-	// Number of cycles the current packet at the head of the input buffer has
-	// been waiting to be routed (in router cycles).
-	int time_elapsed;
-	
-	// The direction the next packet forwarded is being sent in (for the setting
-	// of the flag in the packet.
-	spinn_direction_t selected_output_direction;
-	
-	// The emergency routing state to be assigned to the packet when it is
-	// forwarded
-	spinn_emg_state_t cur_packet_emg_state;
-	
-	// Should the currrent packet be forwarded in the next tock?
-	bool forward_packet;
-	
-	// Should the currrent packet should be dropped in the next tock?
-	bool drop_packet;
-};
-
-
-/******************************************************************************
  * Internal functions.
  ******************************************************************************/
 
@@ -194,31 +137,28 @@ spinn_router_tock(void *r_)
  * Public functions.
  ******************************************************************************/
 
-spinn_router_t *
-spinn_router_create( scheduler_t   *s
-                   , ticks_t        period
-                   , buffer_t      *input
-                   , buffer_t      *outputs[7]
-                   , spinn_coord_t  position
-                   , bool           use_emg_routing
-                   , int            first_timeout
-                   , int            final_timeout
-                   , void           (*on_forward)( spinn_router_t    *router
-                                                 , spinn_packet_t    *packet
-                                                 , void              *data
-                                                 )
-                   , void           *on_forward_data
-                   , void           (*on_drop)( spinn_router_t *router
-                                              , spinn_packet_t *packet
-                                              , void           *data
-                                              )
-                   , void           *on_drop_data
-                   )
+void
+spinn_router_init( spinn_router_t *r
+                 , scheduler_t    *s
+                 , ticks_t         period
+                 , buffer_t       *input
+                 , buffer_t       *outputs[7]
+                 , spinn_coord_t   position
+                 , bool            use_emg_routing
+                 , int             first_timeout
+                 , int             final_timeout
+                 , void            (*on_forward)( spinn_router_t    *router
+                                                , spinn_packet_t    *packet
+                                                , void              *data
+                                                )
+                 , void            *on_forward_data
+                 , void            (*on_drop)( spinn_router_t *router
+                                             , spinn_packet_t *packet
+                                             , void           *data
+                                             )
+                 , void            *on_drop_data
+                 )
 {
-	// Allocate the datastructure
-	spinn_router_t *r = malloc(sizeof(spinn_router_t));
-	assert(r != NULL);
-	
 	// Initialise internal fields
 	r->time_elapsed              = 0;
 	r->forward_packet            = false;
@@ -245,9 +185,6 @@ spinn_router_create( scheduler_t   *s
 	                  , spinn_router_tick, (void *)r
 	                  , spinn_router_tock, (void *)r
 	                  );
-	
-	
-	return r;
 }
 
 
@@ -259,9 +196,9 @@ router_get_position(spinn_router_t *r)
 
 
 void
-spinn_router_free(spinn_router_t *r)
+spinn_router_destroy(spinn_router_t *r)
 {
-	free(r);
+	// Nothing to do
 }
 
 
