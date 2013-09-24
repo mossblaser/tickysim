@@ -19,19 +19,19 @@
 // Largest number of packets to create/free
 #define NUM_PACKETS 128
 
-spinn_packet_pool_t *pool;
+spinn_packet_pool_t pool;
 
 void
 check_spinn_packet_pool_setup(void)
 {
-	pool = spinn_packet_pool_create();
+	spinn_packet_pool_init(&pool);
 }
 
 
 void
 check_spinn_packet_pool_teardown(void)
 {
-	spinn_packet_pool_free(pool);
+	spinn_packet_pool_destroy(&pool);
 }
 
 
@@ -51,7 +51,7 @@ END_TEST
 START_TEST (test_no_pfree)
 {
 	// Get a packet which is never pfreed.
-	spinn_packet_pool_palloc(pool);
+	spinn_packet_pool_palloc(&pool);
 }
 END_TEST
 
@@ -62,15 +62,15 @@ END_TEST
  */
 START_TEST (test_single_packet)
 {
-	spinn_packet_t *p = spinn_packet_pool_palloc(pool);
+	spinn_packet_t *p = spinn_packet_pool_palloc(&pool);
 	spinn_packet_t *last_p = p;
-	spinn_packet_pool_pfree(pool, p);
+	spinn_packet_pool_pfree(&pool, p);
 	
 	for (int i = 0; i < NUM_REPEATS; i++) {
-		p = spinn_packet_pool_palloc(pool);
+		p = spinn_packet_pool_palloc(&pool);
 		ck_assert(p == last_p);
 		last_p = p;
-		spinn_packet_pool_pfree(pool, p);
+		spinn_packet_pool_pfree(&pool, p);
 	}
 }
 END_TEST
@@ -86,7 +86,7 @@ START_TEST (test_many_packets)
 	for (int _ = 0; _ < NUM_REPEATS; _++) {
 		// Create some packets
 		for (int i = 0; i < NUM_PACKETS; i++) {
-			ps[i] = spinn_packet_pool_palloc(pool);
+			ps[i] = spinn_packet_pool_palloc(&pool);
 			// Make sure the packet isn't equal to any requested before.
 			for (int j = 0; j < i; j++) {
 				ck_assert(ps[i] != ps[j]);
@@ -97,7 +97,7 @@ START_TEST (test_many_packets)
 		// recently just to mix things up a bit.
 		for (int i_ = 0; i_ < NUM_PACKETS; i_++) {
 			int i = (i_%2) ? (i_) : ((NUM_PACKETS - i_) - 2);
-			spinn_packet_pool_pfree(pool, ps[i]);
+			spinn_packet_pool_pfree(&pool, ps[i]);
 		}
 	}
 }

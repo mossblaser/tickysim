@@ -31,8 +31,8 @@
 
 scheduler_t s;
 buffer_t b;
-spinn_packet_pool_t *pool;
-spinn_packet_gen_t *g;
+spinn_packet_pool_t pool;
+spinn_packet_gen_t g;
 
 int packets_sent;
 
@@ -41,8 +41,7 @@ check_spinn_packet_gen_setup(void)
 {
 	scheduler_init(&s);
 	buffer_init(&b, BUFFER_SIZE);
-	pool = spinn_packet_pool_create();
-	g    = NULL;
+	spinn_packet_pool_init(&pool);
 	packets_sent = 0;
 }
 
@@ -52,8 +51,8 @@ check_spinn_packet_gen_teardown(void)
 {
 	scheduler_destroy(&s);
 	buffer_destroy(&b);
-	spinn_packet_pool_free(pool);
-	spinn_packet_gen_free(g);
+	spinn_packet_pool_destroy(&pool);
+	spinn_packet_gen_destroy(&g);
 }
 
 
@@ -74,11 +73,11 @@ on_packet_gen(spinn_packet_t *p, void *data)
 
 // Create a packet generator with most arguments set to sensible defaults.
 #define INIT_GEN(create_func, bernoulli_prob) \
-	g = (create_func)( &s, &b, pool \
-	                 , POSITION, SYSTEM_SIZE \
-	                 , PERIOD, (bernoulli_prob) \
-	                 , on_packet_gen, (void *)1234 \
-	                 )
+	(create_func)( &g, &s, &b, &pool \
+	             , POSITION, SYSTEM_SIZE \
+	             , PERIOD, (bernoulli_prob) \
+	             , on_packet_gen, (void *)1234 \
+	             )
 
 
 /**
@@ -89,8 +88,8 @@ START_TEST (test_idle)
 {
 	switch (_i) {
 		default:
-		case 0: INIT_GEN(spinn_packet_gen_cyclic_create, 0.0); break;
-		case 1: INIT_GEN(spinn_packet_gen_uniform_create, 0.0); break;
+		case 0: INIT_GEN(spinn_packet_gen_cyclic_init, 0.0); break;
+		case 1: INIT_GEN(spinn_packet_gen_uniform_init, 0.0); break;
 	}
 	
 	for (int i = 0; i < PERIOD * 10; i++)
@@ -111,8 +110,8 @@ START_TEST (test_certain)
 {
 	switch (_i) {
 		default:
-		case 0: INIT_GEN(spinn_packet_gen_cyclic_create, 1.0); break;
-		case 1: INIT_GEN(spinn_packet_gen_uniform_create, 1.0); break;
+		case 0: INIT_GEN(spinn_packet_gen_cyclic_init, 1.0); break;
+		case 1: INIT_GEN(spinn_packet_gen_uniform_init, 1.0); break;
 	}
 	
 	// Run for long enough that the buffer ends up full
@@ -144,8 +143,8 @@ START_TEST (test_50_50)
 {
 	switch (_i) {
 		default:
-		case 0: INIT_GEN(spinn_packet_gen_cyclic_create, 0.5); break;
-		case 1: INIT_GEN(spinn_packet_gen_uniform_create, 0.5); break;
+		case 0: INIT_GEN(spinn_packet_gen_cyclic_init, 0.5); break;
+		case 1: INIT_GEN(spinn_packet_gen_uniform_init, 0.5); break;
 	}
 	
 	// Run for long enough that the buffer would end up full if the probability
@@ -169,7 +168,7 @@ END_TEST
  */
 START_TEST (test_cyclic_dist)
 {
-	INIT_GEN(spinn_packet_gen_cyclic_create, 1.0);
+	INIT_GEN(spinn_packet_gen_cyclic_init, 1.0);
 	
 	// A count of the number of times a node is visited
 	int visited_nodes[SYSTEM_SIZE_X][SYSTEM_SIZE_Y] = {{0}};
@@ -188,7 +187,7 @@ START_TEST (test_cyclic_dist)
 		ck_assert_int_eq((int)p->payload, 4321);
 		
 		// Free the packet resource
-		spinn_packet_pool_pfree(pool, p);
+		spinn_packet_pool_pfree(&pool, p);
 	}
 	
 	// Check how many times each node is visited

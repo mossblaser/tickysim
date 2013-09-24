@@ -26,8 +26,8 @@
 
 scheduler_t s;
 buffer_t b;
-spinn_packet_pool_t *pool;
-spinn_packet_con_t *c;
+spinn_packet_pool_t pool;
+spinn_packet_con_t c;
 
 int packets_received;
 
@@ -36,8 +36,7 @@ check_spinn_packet_con_setup(void)
 {
 	scheduler_init(&s);
 	buffer_init(&b, BUFFER_SIZE);
-	pool = spinn_packet_pool_create();
-	c    = NULL;
+	spinn_packet_pool_init(&pool);
 	packets_received = 0;
 }
 
@@ -47,8 +46,8 @@ check_spinn_packet_con_teardown(void)
 {
 	scheduler_destroy(&s);
 	buffer_destroy(&b);
-	spinn_packet_pool_free(pool);
-	spinn_packet_con_free(c);
+	spinn_packet_pool_destroy(&pool);
+	spinn_packet_con_destroy(&c);
 }
 
 
@@ -67,10 +66,10 @@ on_packet_con(spinn_packet_t *p, void *data)
 
 // Create a packet generator with most arguments set to sensible defaults.
 #define INIT_CON(bernoulli_prob) \
-	c = spinn_packet_con_create( &s, &b, pool \
-	                           , PERIOD, (bernoulli_prob) \
-	                           , on_packet_con, (void *)1234 \
-	                           )
+	spinn_packet_con_init( &c, &s, &b, &pool \
+	                     , PERIOD, (bernoulli_prob) \
+	                     , on_packet_con, (void *)1234 \
+	                     )
 
 
 /**
@@ -83,7 +82,7 @@ START_TEST (test_idle)
 	
 	// Fill the buffer with packets which are not to be accepted
 	for (int i = 0; i < BUFFER_SIZE; i++)
-		buffer_push(&b, spinn_packet_pool_palloc(pool));
+		buffer_push(&b, spinn_packet_pool_palloc(&pool));
 	
 	for (int i = 0; i < PERIOD * 10; i++)
 		scheduler_tick_tock(&s);
@@ -105,7 +104,7 @@ START_TEST (test_active)
 	
 	// Fill the buffer with packets which will all be accepted
 	for (int i = 0; i < BUFFER_SIZE; i++)
-		buffer_push(&b, spinn_packet_pool_palloc(pool));
+		buffer_push(&b, spinn_packet_pool_palloc(&pool));
 	
 	// Make sure all packets are accepted in the expected timeframe
 	for (int i = 0; i < PERIOD * BUFFER_SIZE; i++)
@@ -136,7 +135,7 @@ START_TEST (test_50_50)
 	
 	// Fill the buffer with packets, some of which will be accepted
 	for (int i = 0; i < BUFFER_SIZE; i++)
-		buffer_push(&b, spinn_packet_pool_palloc(pool));
+		buffer_push(&b, spinn_packet_pool_palloc(&pool));
 	
 	for (int i = 0; i < PERIOD * BUFFER_SIZE; i++)
 		scheduler_tick_tock(&s);

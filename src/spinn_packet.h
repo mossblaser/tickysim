@@ -57,7 +57,7 @@ void spinn_packet_init_dor( spinn_packet_t *packet
 
 
 /******************************************************************************
- * Packet Pool
+ * Utility function datatypes
  ******************************************************************************/
 
 /**
@@ -67,15 +67,35 @@ typedef struct spinn_packet_pool spinn_packet_pool_t;
 
 
 /**
+ * The internal data-structure of a packet generator.
+ */
+typedef struct spinn_packet_gen spinn_packet_gen_t;
+
+
+/**
+ * The internal data-structure of a packet consumer.
+ */
+typedef struct spinn_packet_con spinn_packet_con_t;
+
+
+// Concrete definitions of the above types
+#include "spinn_packet_internal.h"
+
+
+/******************************************************************************
+ * Packet Pool
+ ******************************************************************************/
+
+/**
  * Create a packet pool.
  */
-spinn_packet_pool_t *spinn_packet_pool_create(void);
+void spinn_packet_pool_init(spinn_packet_pool_t *pool);
 
 
 /**
  * Recover the memory used by a packet pool and the packets it created.
  */
-void spinn_packet_pool_free(spinn_packet_pool_t *pool);
+void spinn_packet_pool_destroy(spinn_packet_pool_t *pool);
 
 
 /**
@@ -92,11 +112,6 @@ void spinn_packet_pool_pfree(spinn_packet_pool_t *pool, spinn_packet_t *packet);
 /******************************************************************************
  * Packet generators
  ******************************************************************************/
-
-/**
- * The internal data-structure of a packet generator.
- */
-typedef struct spinn_packet_gen spinn_packet_gen_t;
 
 
 /**
@@ -122,16 +137,17 @@ typedef struct spinn_packet_gen spinn_packet_gen_t;
  *                      callback is disabled.
  * @param on_packet_gen_data A pointer passed to the on_packet_gen function.
  */
-spinn_packet_gen_t *spinn_packet_gen_cyclic_create( scheduler_t         *scheduler
-                                                  , buffer_t            *buffer
-                                                  , spinn_packet_pool_t *packet_pool
-                                                  , spinn_coord_t        position
-                                                  , spinn_coord_t        system_size
-                                                  , ticks_t              period
-                                                  , double               bernoulli_prob
-                                                  , void *(*on_packet_gen)(spinn_packet_t *packet, void *data)
-                                                  , void *on_packet_gen_data
-                                                  );
+void spinn_packet_gen_cyclic_init( spinn_packet_gen_t *gen
+                                 , scheduler_t         *scheduler
+                                 , buffer_t            *buffer
+                                 , spinn_packet_pool_t *packet_pool
+                                 , spinn_coord_t        position
+                                 , spinn_coord_t        system_size
+                                 , ticks_t              period
+                                 , double               bernoulli_prob
+                                 , void *(*on_packet_gen)(spinn_packet_t *packet, void *data)
+                                 , void *on_packet_gen_data
+                                 );
 
 
 /**
@@ -157,16 +173,17 @@ spinn_packet_gen_t *spinn_packet_gen_cyclic_create( scheduler_t         *schedul
  *                      callback is disabled.
  * @param on_packet_gen_data A pointer passed to the on_packet_gen function.
  */
-spinn_packet_gen_t *spinn_packet_gen_uniform_create( scheduler_t         *scheduler
-                                                   , buffer_t            *buffer
-                                                   , spinn_packet_pool_t *packet_pool
-                                                   , spinn_coord_t        position
-                                                   , spinn_coord_t        system_size
-                                                   , ticks_t              period
-                                                   , double               bernoulli_prob
-                                                   , void *(*on_packet_gen)(spinn_packet_t *packet, void *data)
-                                                   , void *on_packet_gen_data
-                                                   );
+void spinn_packet_gen_uniform_init( spinn_packet_gen_t *gen
+                                  , scheduler_t         *scheduler
+                                  , buffer_t            *buffer
+                                  , spinn_packet_pool_t *packet_pool
+                                  , spinn_coord_t        position
+                                  , spinn_coord_t        system_size
+                                  , ticks_t              period
+                                  , double               bernoulli_prob
+                                  , void *(*on_packet_gen)(spinn_packet_t *packet, void *data)
+                                  , void *on_packet_gen_data
+                                  );
 
 /**
  * Change the bernoulli_prob of generating a packet. This should be called
@@ -179,19 +196,13 @@ void spinn_packet_gen_set_bernoulli_prob( spinn_packet_gen_t *packet_gen
 /**
  * Free the resources used by a packet generator.
  */
-void spinn_packet_gen_free(spinn_packet_gen_t *packet_gen);
+void spinn_packet_gen_destroy(spinn_packet_gen_t *packet_gen);
 
 
 
 /******************************************************************************
  * Packet consumers
  ******************************************************************************/
-
-/**
- * The internal data-structure of a packet consumer.
- */
-typedef struct spinn_packet_con spinn_packet_con_t;
-
 
 /**
  * Create a packet consumer which accepts (and immediately pfrees) packets.
@@ -210,14 +221,15 @@ typedef struct spinn_packet_con spinn_packet_con_t;
  *                      the callback is disabled.
  * @param on_packet_con_data A pointer passed to the on_packet_con function.
  */
-spinn_packet_con_t *spinn_packet_con_create( scheduler_t         *scheduler
-                                           , buffer_t            *buffer
-                                           , spinn_packet_pool_t *packet_pool
-                                           , ticks_t              period
-                                           , double               bernoulli_prob
-                                           , void (*on_packet_con)(spinn_packet_t *packet, void *data)
-                                           , void *on_packet_con_data
-                                           );
+void spinn_packet_con_init( spinn_packet_con_t  *con
+                          , scheduler_t         *scheduler
+                          , buffer_t            *buffer
+                          , spinn_packet_pool_t *packet_pool
+                          , ticks_t              period
+                          , double               bernoulli_prob
+                          , void (*on_packet_con)(spinn_packet_t *packet, void *data)
+                          , void *on_packet_con_data
+                          );
 
 /**
  * Change the bernoulli_prob of consuming a packet. This should be called
@@ -231,6 +243,6 @@ void spinn_packet_con_set_bernoulli_prob( spinn_packet_con_t *packet_con
 /**
  * Free the resources used by a packet consumer.
  */
-void spinn_packet_con_free(spinn_packet_con_t *packet_con);
+void spinn_packet_con_destroy(spinn_packet_con_t *packet_con);
 
 #endif
