@@ -30,8 +30,9 @@
 #define OUT_BUFFER_SIZE 2
 
 scheduler_t *s;
-buffer_t *input;
-buffer_t *outputs[7];
+buffer_t input;
+buffer_t outputs[7];
+buffer_t *outputs_p[7];
 
 // A number of packets sufficient to fill all the buffers
 #define NUM_PACKETS ((7*OUT_BUFFER_SIZE*2) + 1)
@@ -82,10 +83,12 @@ check_spinn_router_setup(void)
 	
 	// Create input buffer long enough to completely fill the output buffers and
 	// then block
-	input = buffer_create((7 * OUT_BUFFER_SIZE) + 1);
+	buffer_init(&input, (7 * OUT_BUFFER_SIZE) + 1);
 	
-	for (int i = 0; i < 7; i++)
-		outputs[i] = buffer_create(OUT_BUFFER_SIZE);
+	for (int i = 0; i < 7; i++) {
+		buffer_init(&(outputs[i]), OUT_BUFFER_SIZE);
+		outputs_p[i] = &(outputs[i]);
+	}
 	
 	last_on_forward.num_calls = 0;
 	last_on_drop.num_calls = 0;
@@ -99,9 +102,9 @@ void
 check_spinn_router_teardown(void)
 {
 	scheduler_free(s);
-	buffer_free(input);
+	buffer_destroy(&input);
 	for (int i = 0; i < 7; i++)
-		buffer_free(outputs[i]);
+		buffer_destroy(&(outputs[i]));
 	if (r != NULL)
 		spinn_router_free(r);
 }
@@ -159,7 +162,7 @@ on_drop( spinn_router_t *router
 // Create a router with most arguments set to sensible defaults.
 #define INIT_ROUTER(use_emg_routing, on_forward, on_drop) \
 	r = spinn_router_create( s, ROUTER_PERIOD \
-	                       , input, outputs \
+	                       , &input, outputs_p \
 	                       , ((spinn_coord_t){0,0}) \
 	                       , (use_emg_routing) \
 	                       , FIRST_TIMEOUT, FINAL_TIMEOUT \
@@ -207,23 +210,23 @@ START_TEST (test_single_normal_packet)
 	p.emg_state            = SPINN_EMG_NORMAL;
 	p.payload              = NULL;
 	
-	buffer_push(input, (void *)&p);
+	buffer_push(&input, (void *)&p);
 	
 	// Lets see what happens
 	scheduler_tick_tock(s);
 	
 	// Make sure the right buffers are occupied
-	ck_assert(buffer_is_empty(input));
+	ck_assert(buffer_is_empty(&input));
 	for (int i = 0; i < 7; i++) {
 		if (i == direction)
-			ck_assert(!buffer_is_empty(outputs[i]));
+			ck_assert(!buffer_is_empty(&(outputs[i])));
 		else
-			ck_assert(buffer_is_empty(outputs[i]));
+			ck_assert(buffer_is_empty(&(outputs[i])));
 	}
 	
 	// Remove the packet from the output, it should be the one we put into the
 	// input and should be unchanged.
-	ck_assert(buffer_pop(outputs[direction]) == (void *)&p);
+	ck_assert(buffer_pop(&(outputs[direction])) == (void *)&p);
 	ck_assert(p.inflection_point.x == -1);
 	ck_assert(p.inflection_point.y == -1);
 	ck_assert(p.inflection_direction == SPINN_NORTH);
@@ -244,9 +247,9 @@ START_TEST (test_single_normal_packet)
 		scheduler_tick_tock(s);
 	
 	// Make sure no buffers became occupied
-	ck_assert(buffer_is_empty(input));
+	ck_assert(buffer_is_empty(&input));
 	for (int i = 0; i < 7; i++)
-		ck_assert(buffer_is_empty(outputs[i]));
+		ck_assert(buffer_is_empty(&(outputs[i])));
 	
 	// Make sure no other callbacks happend
 	ck_assert_int_eq(last_on_drop.num_calls,    0);
@@ -274,7 +277,7 @@ START_TEST (test_multiple_normal_packet)
 			p->emg_state            = SPINN_EMG_NORMAL;
 			p->payload              = NULL;
 			
-			buffer_push(input, (void *)p);
+			buffer_push(&input, (void *)p);
 			
 			// Advance to the next packet
 			p++;
@@ -338,7 +341,7 @@ START_TEST (test_normal_packet_arrival)
 			p->emg_state            = emg_types[i];
 			p->payload              = NULL;
 			
-			buffer_push(input, (void *)p);
+			buffer_push(&input, (void *)p);
 			
 			// Advance to the next packet
 			p++;
@@ -365,8 +368,8 @@ START_TEST (test_normal_packet_arrival)
 				);
 			
 			// Should have arrived in the local buffer too
-			ck_assert(!buffer_is_empty(outputs[SPINN_LOCAL]));
-			ck_assert(p == buffer_pop(outputs[SPINN_LOCAL]));
+			ck_assert(!buffer_is_empty(&(outputs[SPINN_LOCAL])));
+			ck_assert(p == buffer_pop(&(outputs[SPINN_LOCAL])));
 			
 			// Have the correct number of packets been sent?
 			ck_assert_int_eq(last_on_forward.num_calls, 1 + (i*7) + direction);
@@ -409,7 +412,7 @@ START_TEST (test_normal_packet_drop)
 			p->emg_state            = emg_types[i];
 			p->payload              = NULL;
 			
-			buffer_push(input, (void *)p);
+			buffer_push(&input, (void *)p);
 			
 			// Advance to the next packet
 			p++;
@@ -419,7 +422,7 @@ START_TEST (test_normal_packet_drop)
 	// Fill up all the output buffers to ensure that all packets will be dropped
 	for (int i = 0; i < 7; i++) {
 		for (int j = 0; j < OUT_BUFFER_SIZE; j++) {
-			buffer_push(outputs[i], NULL);
+			buffer_push(&(outputs[i]), NULL);
 		}
 	}
 	
@@ -473,7 +476,7 @@ START_TEST (test_emg_first_leg)
 	p->emg_state            = emg_type;
 	p->payload              = NULL;
 	
-	buffer_push(input, (void *)p);
+	buffer_push(&input, (void *)p);
 	
 	// The direction the packet would normally go
 	spinn_direction_t normal_direction = (emg_type==SPINN_EMG_NORMAL) ? direction
@@ -481,7 +484,7 @@ START_TEST (test_emg_first_leg)
 	
 	// Fill up the expected output buffer
 	for (int j = 0; j < OUT_BUFFER_SIZE; j++) {
-		buffer_push(outputs[normal_direction], NULL);
+		buffer_push(&(outputs[normal_direction]), NULL);
 	}
 	
 	// See that the packet is forwarded after timing out to the emergency port
@@ -523,7 +526,7 @@ START_TEST (test_emg_second_leg)
 	p->emg_state            = SPINN_EMG_FIRST_LEG;
 	p->payload              = NULL;
 	
-	buffer_push(input, (void *)p);
+	buffer_push(&input, (void *)p);
 	
 	// See that the packet is forwarded immediately
 	for (int j = 0; j < ROUTER_PERIOD; j++)

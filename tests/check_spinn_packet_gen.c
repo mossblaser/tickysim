@@ -30,7 +30,7 @@
 #define SYSTEM_SIZE ((spinn_coord_t){SYSTEM_SIZE_X,SYSTEM_SIZE_Y})
 
 scheduler_t *s;
-buffer_t *b;
+buffer_t b;
 spinn_packet_pool_t *pool;
 spinn_packet_gen_t *g;
 
@@ -40,7 +40,7 @@ void
 check_spinn_packet_gen_setup(void)
 {
 	s    = scheduler_create();
-	b    = buffer_create(BUFFER_SIZE);
+	buffer_init(&b, BUFFER_SIZE);
 	pool = spinn_packet_pool_create();
 	g    = NULL;
 	packets_sent = 0;
@@ -51,7 +51,7 @@ void
 check_spinn_packet_gen_teardown(void)
 {
 	scheduler_free(s);
-	buffer_free(b);
+	buffer_destroy(&b);
 	spinn_packet_pool_free(pool);
 	spinn_packet_gen_free(g);
 }
@@ -74,7 +74,7 @@ on_packet_gen(spinn_packet_t *p, void *data)
 
 // Create a packet generator with most arguments set to sensible defaults.
 #define INIT_GEN(create_func, bernoulli_prob) \
-	g = (create_func)( s, b, pool \
+	g = (create_func)( s, &b, pool \
 	                 , POSITION, SYSTEM_SIZE \
 	                 , PERIOD, (bernoulli_prob) \
 	                 , on_packet_gen, (void *)1234 \
@@ -97,7 +97,7 @@ START_TEST (test_idle)
 		scheduler_tick_tock(s);
 	
 	// Make sure nothing got sent...
-	ck_assert(buffer_is_empty(b));
+	ck_assert(buffer_is_empty(&b));
 	ck_assert_int_eq(packets_sent, 0);
 }
 END_TEST
@@ -122,11 +122,11 @@ START_TEST (test_certain)
 			scheduler_tick_tock(s);
 		
 		// A packet should have arrived
-		ck_assert(!buffer_is_empty(b));
+		ck_assert(!buffer_is_empty(&b));
 		
 		// If the number of packets sent is larger than the buffer then the buffer
 		// should be full.
-		ck_assert(!!buffer_is_full(b) == !!((i+1) >= BUFFER_SIZE));
+		ck_assert(!!buffer_is_full(&b) == !!((i+1) >= BUFFER_SIZE));
 	}
 	
 	ck_assert_int_eq(packets_sent, BUFFER_SIZE);
@@ -154,8 +154,8 @@ START_TEST (test_50_50)
 		scheduler_tick_tock(s);
 	
 	// Should have sent less than the maximum and more than the minimum
-	ck_assert(!buffer_is_empty(b));
-	ck_assert(!buffer_is_full(b));
+	ck_assert(!buffer_is_empty(&b));
+	ck_assert(!buffer_is_full(&b));
 	
 	ck_assert(packets_sent > 0);
 	ck_assert(packets_sent < BUFFER_SIZE);
@@ -180,8 +180,8 @@ START_TEST (test_cyclic_dist)
 			scheduler_tick_tock(s);
 		
 		// A packet should have arrived, note its posiiton
-		ck_assert(!buffer_is_empty(b));
-		spinn_packet_t *p = (spinn_packet_t *)buffer_pop(b);
+		ck_assert(!buffer_is_empty(&b));
+		spinn_packet_t *p = (spinn_packet_t *)buffer_pop(&b);
 		visited_nodes[p->destination.x][p->destination.y]++;
 		
 		// Check the payload added by the callback is correct

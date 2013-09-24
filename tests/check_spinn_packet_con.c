@@ -25,7 +25,7 @@
 #define BUFFER_SIZE 10
 
 scheduler_t *s;
-buffer_t *b;
+buffer_t b;
 spinn_packet_pool_t *pool;
 spinn_packet_con_t *c;
 
@@ -35,7 +35,7 @@ void
 check_spinn_packet_con_setup(void)
 {
 	s    = scheduler_create();
-	b    = buffer_create(BUFFER_SIZE);
+	buffer_init(&b, BUFFER_SIZE);
 	pool = spinn_packet_pool_create();
 	c    = NULL;
 	packets_received = 0;
@@ -46,7 +46,7 @@ void
 check_spinn_packet_con_teardown(void)
 {
 	scheduler_free(s);
-	buffer_free(b);
+	buffer_destroy(&b);
 	spinn_packet_pool_free(pool);
 	spinn_packet_con_free(c);
 }
@@ -67,7 +67,7 @@ on_packet_con(spinn_packet_t *p, void *data)
 
 // Create a packet generator with most arguments set to sensible defaults.
 #define INIT_CON(bernoulli_prob) \
-	c = spinn_packet_con_create( s, b, pool \
+	c = spinn_packet_con_create( s, &b, pool \
 	                           , PERIOD, (bernoulli_prob) \
 	                           , on_packet_con, (void *)1234 \
 	                           )
@@ -83,13 +83,13 @@ START_TEST (test_idle)
 	
 	// Fill the buffer with packets which are not to be accepted
 	for (int i = 0; i < BUFFER_SIZE; i++)
-		buffer_push(b, spinn_packet_pool_palloc(pool));
+		buffer_push(&b, spinn_packet_pool_palloc(pool));
 	
 	for (int i = 0; i < PERIOD * 10; i++)
 		scheduler_tick_tock(s);
 	
 	// Make sure nothing got received...
-	ck_assert(buffer_is_full(b));
+	ck_assert(buffer_is_full(&b));
 	
 	ck_assert_int_eq(packets_received, 0);
 }
@@ -105,12 +105,12 @@ START_TEST (test_active)
 	
 	// Fill the buffer with packets which will all be accepted
 	for (int i = 0; i < BUFFER_SIZE; i++)
-		buffer_push(b, spinn_packet_pool_palloc(pool));
+		buffer_push(&b, spinn_packet_pool_palloc(pool));
 	
 	// Make sure all packets are accepted in the expected timeframe
 	for (int i = 0; i < PERIOD * BUFFER_SIZE; i++)
 		scheduler_tick_tock(s);
-	ck_assert(buffer_is_empty(b));
+	ck_assert(buffer_is_empty(&b));
 	
 	ck_assert_int_eq(packets_received, BUFFER_SIZE);
 	
@@ -136,14 +136,14 @@ START_TEST (test_50_50)
 	
 	// Fill the buffer with packets, some of which will be accepted
 	for (int i = 0; i < BUFFER_SIZE; i++)
-		buffer_push(b, spinn_packet_pool_palloc(pool));
+		buffer_push(&b, spinn_packet_pool_palloc(pool));
 	
 	for (int i = 0; i < PERIOD * BUFFER_SIZE; i++)
 		scheduler_tick_tock(s);
 	
 	// Make sure some packets got accepted and others didn't
-	ck_assert(!buffer_is_empty(b));
-	ck_assert(!buffer_is_full(b));
+	ck_assert(!buffer_is_empty(&b));
+	ck_assert(!buffer_is_full(&b));
 	
 	ck_assert(packets_received > 0);
 	ck_assert(packets_received < BUFFER_SIZE);

@@ -21,33 +21,34 @@ START_TEST (test_buffer_push_pop)
 	
 	// Create a buffer exactly long enough to fit pointers to all the pointables
 	// in.
-	buffer_t *b = buffer_create(buf_len);
+	buffer_t b;
+	buffer_init(&b, buf_len);
 	
 	// Attempt to fill/empty the buffer twice to make sure that when the pointers
 	// wrap nothing goes wrong.
 	for (int j = 0; j < 2; j++) {
 		// Initially the buffer is empty
-		ck_assert(buffer_is_empty(b));
-		ck_assert(!buffer_is_full(b));
+		ck_assert(buffer_is_empty(&b));
+		ck_assert(!buffer_is_full(&b));
 		
 		// Fill the buffer up
 		for (int i = 0; i < buf_len; i++) {
-			buffer_push(b, (void *)(pointables + i));
+			buffer_push(&b, (void *)(pointables + i));
 			// Until the last element is inserted the list should not be full
 			if (i < buf_len-1) {
-				ck_assert(!buffer_is_empty(b));
-				ck_assert(!buffer_is_full(b));
+				ck_assert(!buffer_is_empty(&b));
+				ck_assert(!buffer_is_full(&b));
 			} else {
-				ck_assert(!buffer_is_empty(b));
-				ck_assert(buffer_is_full(b));
+				ck_assert(!buffer_is_empty(&b));
+				ck_assert(buffer_is_full(&b));
 			}
 		}
 		
 		// Pop a few items
 		for (int i = 0; i < buf_len; i++) {
-			char *c_peeked = buffer_peek(b);
+			char *c_peeked = buffer_peek(&b);
 			
-			char *c = buffer_pop(b);
+			char *c = buffer_pop(&b);
 			
 			// Check the value popped was the one put in...
 			ck_assert_int_eq((int)*c,        (int)pointables[i]);
@@ -55,16 +56,16 @@ START_TEST (test_buffer_push_pop)
 			
 			// Until the last element is popped the list should not be empty
 			if (i < buf_len-1) {
-				ck_assert(!buffer_is_empty(b));
-				ck_assert(!buffer_is_full(b));
+				ck_assert(!buffer_is_empty(&b));
+				ck_assert(!buffer_is_full(&b));
 			} else {
-				ck_assert(buffer_is_empty(b));
-				ck_assert(!buffer_is_full(b));
+				ck_assert(buffer_is_empty(&b));
+				ck_assert(!buffer_is_full(&b));
 			}
 		}
 	}
 	
-	buffer_free(b);
+	buffer_destroy(&b);
 }
 END_TEST
 
