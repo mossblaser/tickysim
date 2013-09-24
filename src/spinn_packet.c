@@ -84,6 +84,20 @@ struct spinn_packet_gen {
 	} dist_data;
 };
 
+struct spinn_packet_con {
+	// The buffer from which packets will be consumed
+	buffer_t *buffer;
+	
+	// Pool of packets to send
+	spinn_packet_pool_t *pool;
+	
+	// How frequently will packets be consumed
+	double bernoulli_prob;
+	
+	// Should a packet be consumed during the tock phase?
+	bool consume_packet;
+};
+
 /******************************************************************************
  * Public Utility Functions
  ******************************************************************************/
@@ -229,8 +243,8 @@ spinn_packet_pool_pfree( spinn_packet_pool_t *pool
  ******************************************************************************/
 
 /**
- * Tock function which decides whether to send a packet (based first on the
- * availability of space in the output buffer and then the Bernoulli test.
+ * Tick function which decides whether to send a packet (based on the
+ * availability of space in the output buffer and then the Bernoulli trial.
  */
 void
 spinn_packet_gen_tick(void *g_)
@@ -242,8 +256,7 @@ spinn_packet_gen_tick(void *g_)
 }
 
 /**
- * Tock function which decides whether to send a packet (based first on the
- * availability of space in the output buffer and then the Bernoulli test.
+ * Tock function actually generate and send a packet if required.
  */
 void
 spinn_packet_gen_tock(void *g_)
@@ -364,4 +377,74 @@ void
 spinn_packet_gen_free(spinn_packet_gen_t *g)
 {
 	free(g);
+}
+
+
+/******************************************************************************
+ * Packet consumer
+ ******************************************************************************/
+
+/**
+ * Tick function which decides whether to consume a packet (based on the
+ * availability of a packet in the buffer and then a Bernoulli trial.
+ */
+void
+spinn_packet_con_tick(void *c_)
+{
+	spinn_packet_con_t *c = (spinn_packet_con_t *)c_;
+	
+	c->consume_packet = !buffer_is_empty(c->buffer)
+	                 && (((double)rand())/((double)RAND_MAX+1.0)) <= c->bernoulli_prob;
+}
+
+/**
+ * Tock function: actually consume the value if required.
+ */
+void
+spinn_packet_con_tock(void *c_)
+{
+	spinn_packet_con_t *c = (spinn_packet_con_t *)c_;
+	
+	// Do nothing if no packet due to be sent
+	if (!c->consume_packet)
+		return;
+	
+	// Consume and free the packet
+	spinn_packet_t *p = buffer_pop(c->buffer);
+	spinn_packet_pool_pfree(c->pool, p);
+	
+	// Clear the flag
+	c->consume_packet = false;
+}
+
+spinn_packet_con_t *
+spinn_packet_con_create( scheduler_t             *s
+                       , buffer_t                *b
+                       , spinn_packet_pool_t     *pool
+                       , ticks_t                  period
+                       , double                   bernoulli_prob
+                       )
+{
+	spinn_packet_con_t *c = malloc(sizeof(spinn_packet_con_t));
+	assert(c != NULL);
+	
+	// Set up data-structure fields
+	c->buffer         = b;
+	c->pool           = pool;
+	c->bernoulli_prob = bernoulli_prob;
+	
+	// Set up tick/tock functions
+	scheduler_schedule( s, period
+	                  , spinn_packet_con_tick, (void *)c
+	                  , spinn_packet_con_tock, (void *)c
+	                  );
+	
+	return c;
+}
+
+
+void
+spinn_packet_con_free(spinn_packet_con_t *c)
+{
+	free(c);
 }

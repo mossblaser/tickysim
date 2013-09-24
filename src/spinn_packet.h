@@ -168,4 +168,29 @@ void spinn_packet_gen_free(spinn_packet_gen_t *packet_gen);
  */
 typedef struct spinn_packet_con spinn_packet_con_t;
 
+
+/**
+ * Create a packet consumer which accepts (and immediately pfrees) packets.
+ *
+ * @param scheduler A scheduler into which the packet consumer will schedule
+ *                  itself.
+ * @param buffer The buffer out of which generated packets will be consumed.
+ * @param packet_pool A pool of packet objects to save on malloc/free calls.
+ *
+ * @param period The period at which the packet generator will run.
+ * @param bernoulli_prob The probability with which a packet will be accepted
+ *                       when the packet consumer runs.
+ */
+spinn_packet_con_t *spinn_packet_con_create( scheduler_t         *scheduler
+                                           , buffer_t            *buffer
+                                           , spinn_packet_pool_t *packet_pool
+                                           , ticks_t              period
+                                           , double               bernoulli_prob
+                                           );
+
+/**
+ * Free the resources used by a packet consumer.
+ */
+void spinn_packet_con_free(spinn_packet_con_t *packet_con);
+
 #endif

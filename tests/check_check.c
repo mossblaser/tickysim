@@ -29,6 +29,7 @@ main(int argc, char *argv[])
 	srunner_add_suite(sr, make_spinn_packet_init_dor());
 	srunner_add_suite(sr, make_spinn_packet_pool_suite());
 	srunner_add_suite(sr, make_spinn_packet_gen_suite());
+	srunner_add_suite(sr, make_spinn_packet_con_suite());
 	
 	// Run the tests
 	srunner_run_all(sr, CK_NORMAL);
