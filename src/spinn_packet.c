@@ -82,6 +82,10 @@ struct spinn_packet_gen {
 		} cyclic;
 		
 	} dist_data;
+	
+	// Callback on packet create/send
+	void *(*on_packet_gen)(spinn_packet_t *packet, void *data);
+	void *on_packet_gen_data;
 };
 
 struct spinn_packet_con {
@@ -96,6 +100,10 @@ struct spinn_packet_con {
 	
 	// Should a packet be consumed during the tock phase?
 	bool consume_packet;
+	
+	// Callback on packet consumption
+	void (*on_packet_con)(spinn_packet_t *packet, void *data);
+	void *on_packet_con_data;
 };
 
 /******************************************************************************
@@ -291,9 +299,15 @@ spinn_packet_gen_tock(void *g_)
 			break;
 	}
 	
-	// Produce and send the packet
+	// Produce the packet
 	spinn_packet_t *p = spinn_packet_pool_palloc(g->pool);
 	spinn_packet_init_dor(p, g->position, destination, g->system_size, NULL);
+	
+	// Set up the payload and run the callback
+	if (g->on_packet_gen)
+		p->payload = g->on_packet_gen(p, g->on_packet_gen_data);
+	
+	// Send the packet
 	buffer_push(g->buffer, (void *)p);
 	
 	// Clear the flag
@@ -312,6 +326,8 @@ spinn_packet_gen_create_base( scheduler_t             *s
                             , spinn_coord_t            system_size
                             , ticks_t                  period
                             , double                   bernoulli_prob
+                            , void *(*on_packet_gen)(spinn_packet_t *packet, void *data)
+                            , void *on_packet_gen_data
                             , spinn_packet_gen_dist_t  dist
                             )
 {
@@ -319,12 +335,14 @@ spinn_packet_gen_create_base( scheduler_t             *s
 	assert(g != NULL);
 	
 	// Set up data-structure fields
-	g->buffer         = b;
-	g->pool           = pool;
-	g->position       = position;
-	g->system_size    = system_size;
-	g->bernoulli_prob = bernoulli_prob;
-	g->dist           = dist;
+	g->buffer             = b;
+	g->pool               = pool;
+	g->position           = position;
+	g->system_size        = system_size;
+	g->bernoulli_prob     = bernoulli_prob;
+	g->on_packet_gen      = on_packet_gen;
+	g->on_packet_gen_data = on_packet_gen_data;
+	g->dist               = dist;
 	
 	// Set up tick/tock functions
 	scheduler_schedule( s, period
@@ -343,10 +361,12 @@ spinn_packet_gen_cyclic_create( scheduler_t         *s
                               , spinn_coord_t        system_size
                               , ticks_t              period
                               , double               bernoulli_prob
+                              , void *(*on_packet_gen)(spinn_packet_t *packet, void *data)
+                              , void *on_packet_gen_data
                               )
 {
 	spinn_packet_gen_t *g = spinn_packet_gen_create_base(
-		s,b,pool,position,system_size, period, bernoulli_prob,
+		s,b,pool,position,system_size, period, bernoulli_prob, on_packet_gen, on_packet_gen_data,
 		SPINN_DIST_CYCLIC);
 	
 	// Start the cyclic message sending from the current position
@@ -364,10 +384,12 @@ spinn_packet_gen_uniform_create( scheduler_t         *s
                                , spinn_coord_t        system_size
                                , ticks_t              period
                                , double               bernoulli_prob
+                               , void *(*on_packet_gen)(spinn_packet_t *packet, void *data)
+                               , void *on_packet_gen_data
                                )
 {
 	spinn_packet_gen_t *g = spinn_packet_gen_create_base(
-		s,b,pool,position,system_size, period, bernoulli_prob,
+		s,b,pool,position,system_size, period, bernoulli_prob, on_packet_gen, on_packet_gen_data,
 		SPINN_DIST_UNIFORM);
 	
 	return g;
@@ -409,8 +431,14 @@ spinn_packet_con_tock(void *c_)
 	if (!c->consume_packet)
 		return;
 	
-	// Consume and free the packet
+	// Consume the packet
 	spinn_packet_t *p = buffer_pop(c->buffer);
+	
+	// Run the callback
+	if (c->on_packet_con)
+		c->on_packet_con(p, c->on_packet_con_data);
+	
+	// Clear up
 	spinn_packet_pool_pfree(c->pool, p);
 	
 	// Clear the flag
@@ -423,15 +451,19 @@ spinn_packet_con_create( scheduler_t             *s
                        , spinn_packet_pool_t     *pool
                        , ticks_t                  period
                        , double                   bernoulli_prob
+                       , void (*on_packet_con)(spinn_packet_t *packet, void *data)
+                       , void *on_packet_con_data
                        )
 {
 	spinn_packet_con_t *c = malloc(sizeof(spinn_packet_con_t));
 	assert(c != NULL);
 	
 	// Set up data-structure fields
-	c->buffer         = b;
-	c->pool           = pool;
-	c->bernoulli_prob = bernoulli_prob;
+	c->buffer             = b;
+	c->pool               = pool;
+	c->bernoulli_prob     = bernoulli_prob;
+	c->on_packet_con      = on_packet_con;
+	c->on_packet_con_data = on_packet_con_data;
 	
 	// Set up tick/tock functions
 	scheduler_schedule( s, period

@@ -29,6 +29,7 @@ buffer_t *b;
 spinn_packet_pool_t *pool;
 spinn_packet_con_t *c;
 
+int packets_received;
 
 void
 check_spinn_packet_con_setup(void)
@@ -37,6 +38,7 @@ check_spinn_packet_con_setup(void)
 	b    = buffer_create(BUFFER_SIZE);
 	pool = spinn_packet_pool_create();
 	c    = NULL;
+	packets_received = 0;
 }
 
 
@@ -49,6 +51,16 @@ check_spinn_packet_con_teardown(void)
 	spinn_packet_con_free(c);
 }
 
+
+void
+on_packet_con(spinn_packet_t *p, void *data)
+{
+	ck_assert(p != NULL);
+	ck_assert_int_eq((int)data, 1234);
+	
+	packets_received++;
+}
+
 /******************************************************************************
  * Tests
  ******************************************************************************/
@@ -57,6 +69,7 @@ check_spinn_packet_con_teardown(void)
 #define INIT_CON(bernoulli_prob) \
 	c = spinn_packet_con_create( s, b, pool \
 	                           , PERIOD, (bernoulli_prob) \
+	                           , on_packet_con, (void *)1234 \
 	                           )
 
 
@@ -77,6 +90,8 @@ START_TEST (test_idle)
 	
 	// Make sure nothing got received...
 	ck_assert(buffer_is_full(b));
+	
+	ck_assert_int_eq(packets_received, 0);
 }
 END_TEST
 
@@ -97,9 +112,13 @@ START_TEST (test_active)
 		scheduler_tick_tock(s);
 	ck_assert(buffer_is_empty(b));
 	
+	ck_assert_int_eq(packets_received, BUFFER_SIZE);
+	
 	// Make sure nothing catches fire when the buffer is empty
 	for (int i = 0; i < PERIOD * BUFFER_SIZE; i++)
 		scheduler_tick_tock(s);
+	
+	ck_assert_int_eq(packets_received, BUFFER_SIZE);
 }
 END_TEST
 
@@ -126,6 +145,8 @@ START_TEST (test_50_50)
 	ck_assert(!buffer_is_empty(b));
 	ck_assert(!buffer_is_full(b));
 	
+	ck_assert(packets_received > 0);
+	ck_assert(packets_received < BUFFER_SIZE);
 }
 END_TEST
 

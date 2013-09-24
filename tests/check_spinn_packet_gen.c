@@ -14,7 +14,6 @@
 #include "../src/buffer.h"
 
 #include "../src/spinn.h"
-#include "../src/spinn_topology.h"
 #include "../src/spinn_packet.h"
 
 /******************************************************************************
@@ -35,6 +34,7 @@ buffer_t *b;
 spinn_packet_pool_t *pool;
 spinn_packet_gen_t *g;
 
+int packets_sent;
 
 void
 check_spinn_packet_gen_setup(void)
@@ -43,6 +43,7 @@ check_spinn_packet_gen_setup(void)
 	b    = buffer_create(BUFFER_SIZE);
 	pool = spinn_packet_pool_create();
 	g    = NULL;
+	packets_sent = 0;
 }
 
 
@@ -55,6 +56,18 @@ check_spinn_packet_gen_teardown(void)
 	spinn_packet_gen_free(g);
 }
 
+
+void *
+on_packet_gen(spinn_packet_t *p, void *data)
+{
+	ck_assert(p != NULL);
+	ck_assert_int_eq((int)data, 1234);
+	
+	packets_sent++;
+	
+	return (void *)4321;
+}
+
 /******************************************************************************
  * Tests
  ******************************************************************************/
@@ -64,6 +77,7 @@ check_spinn_packet_gen_teardown(void)
 	g = (create_func)( s, b, pool \
 	                 , POSITION, SYSTEM_SIZE \
 	                 , PERIOD, (bernoulli_prob) \
+	                 , on_packet_gen, (void *)1234 \
 	                 )
 
 
@@ -84,6 +98,7 @@ START_TEST (test_idle)
 	
 	// Make sure nothing got sent...
 	ck_assert(buffer_is_empty(b));
+	ck_assert_int_eq(packets_sent, 0);
 }
 END_TEST
 
@@ -113,6 +128,8 @@ START_TEST (test_certain)
 		// should be full.
 		ck_assert(!!buffer_is_full(b) == !!((i+1) >= BUFFER_SIZE));
 	}
+	
+	ck_assert_int_eq(packets_sent, BUFFER_SIZE);
 }
 END_TEST
 
@@ -139,6 +156,9 @@ START_TEST (test_50_50)
 	// Should have sent less than the maximum and more than the minimum
 	ck_assert(!buffer_is_empty(b));
 	ck_assert(!buffer_is_full(b));
+	
+	ck_assert(packets_sent > 0);
+	ck_assert(packets_sent < BUFFER_SIZE);
 }
 END_TEST
 
@@ -164,6 +184,9 @@ START_TEST (test_cyclic_dist)
 		spinn_packet_t *p = (spinn_packet_t *)buffer_pop(b);
 		visited_nodes[p->destination.x][p->destination.y]++;
 		
+		// Check the payload added by the callback is correct
+		ck_assert_int_eq((int)p->payload, 4321);
+		
 		// Free the packet resource
 		spinn_packet_pool_pfree(pool, p);
 	}
@@ -174,6 +197,8 @@ START_TEST (test_cyclic_dist)
 			ck_assert_int_eq(visited_nodes[x][y], 2);
 		}
 	}
+	
+	ck_assert_int_eq(packets_sent, SYSTEM_SIZE_X*SYSTEM_SIZE_Y*2);
 }
 END_TEST
 

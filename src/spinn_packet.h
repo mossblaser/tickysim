@@ -115,6 +115,12 @@ typedef struct spinn_packet_gen spinn_packet_gen_t;
  * @param period The period at which the packet generator will run.
  * @param bernoulli_prob The probability with which a packet will be generated
  *                       when the packet generator runs.
+ *
+ * @param on_packet_gen Is a function called during the tock phase just after
+ *                      packet creation but before it is sent. The value
+ *                      returned is set as the packet payload. If NULL, the
+ *                      callback is disabled.
+ * @param on_packet_gen_data A pointer passed to the on_packet_gen function.
  */
 spinn_packet_gen_t *spinn_packet_gen_cyclic_create( scheduler_t         *scheduler
                                                   , buffer_t            *buffer
@@ -123,6 +129,8 @@ spinn_packet_gen_t *spinn_packet_gen_cyclic_create( scheduler_t         *schedul
                                                   , spinn_coord_t        system_size
                                                   , ticks_t              period
                                                   , double               bernoulli_prob
+                                                  , void *(*on_packet_gen)(spinn_packet_t *packet, void *data)
+                                                  , void *on_packet_gen_data
                                                   );
 
 
@@ -142,6 +150,12 @@ spinn_packet_gen_t *spinn_packet_gen_cyclic_create( scheduler_t         *schedul
  * @param period The period at which the packet generator will run.
  * @param bernoulli_prob The probability with which a packet will be generated
  *                       when the packet generator runs.
+ *
+ * @param on_packet_gen Is a function called during the tock phase just after
+ *                      packet creation but before it is sent. The value
+ *                      returned is set as the packet payload. If NULL, the
+ *                      callback is disabled.
+ * @param on_packet_gen_data A pointer passed to the on_packet_gen function.
  */
 spinn_packet_gen_t *spinn_packet_gen_uniform_create( scheduler_t         *scheduler
                                                    , buffer_t            *buffer
@@ -150,6 +164,8 @@ spinn_packet_gen_t *spinn_packet_gen_uniform_create( scheduler_t         *schedu
                                                    , spinn_coord_t        system_size
                                                    , ticks_t              period
                                                    , double               bernoulli_prob
+                                                   , void *(*on_packet_gen)(spinn_packet_t *packet, void *data)
+                                                   , void *on_packet_gen_data
                                                    );
 
 /**
@@ -180,12 +196,19 @@ typedef struct spinn_packet_con spinn_packet_con_t;
  * @param period The period at which the packet generator will run.
  * @param bernoulli_prob The probability with which a packet will be accepted
  *                       when the packet consumer runs.
+ *
+ * @param on_packet_con Is a function called during the tock phase just after
+ *                      the packet arrives and just before it is freed. If NULL,
+ *                      the callback is disabled.
+ * @param on_packet_con_data A pointer passed to the on_packet_con function.
  */
 spinn_packet_con_t *spinn_packet_con_create( scheduler_t         *scheduler
                                            , buffer_t            *buffer
                                            , spinn_packet_pool_t *packet_pool
                                            , ticks_t              period
                                            , double               bernoulli_prob
+                                           , void (*on_packet_con)(spinn_packet_t *packet, void *data)
+                                           , void *on_packet_con_data
                                            );
 
 /**
