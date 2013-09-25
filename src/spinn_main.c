@@ -432,6 +432,17 @@ spinn_simulation_init(spinn_simulation_t *sim, const char *config_filename)
 	}
 }
 
+void
+spinn_simulation_run(spinn_simulation_t *sim)
+{
+	ticks_t duration = spinn_config_lookup_int(sim, "simulation.duration");
+	
+	for (ticks_t i = 0; i < duration; i++) {
+		scheduler_tick_tock(&(sim->scheduler));
+		fprintf(stderr, "Time: %d\n", i);
+	}
+}
+
 
 void
 spinn_simulation_destroy(spinn_simulation_t *sim)
@@ -461,5 +472,6 @@ main(int argc, char *argv[])
 	
 	spinn_simulation_t sim;
 	spinn_simulation_init(&sim, argv[1]);
+	spinn_simulation_run(&sim);
 	spinn_simulation_destroy(&sim);
 }
