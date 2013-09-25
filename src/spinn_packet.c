@@ -164,8 +164,8 @@ spinn_packet_gen_tick(void *g_)
 {
 	spinn_packet_gen_t *g = (spinn_packet_gen_t *)g_;
 	
-	g->send_packet = !buffer_is_full(g->buffer)
-	              && (((double)rand())/((double)RAND_MAX+1.0)) <= g->bernoulli_prob;
+	g->send_packet    = (((double)rand())/((double)RAND_MAX+1.0)) <= g->bernoulli_prob;
+	g->output_blocked = buffer_is_full(g->buffer);
 }
 
 /**
@@ -179,6 +179,15 @@ spinn_packet_gen_tock(void *g_)
 	// Do nothing if no packet due to be sent
 	if (!g->send_packet)
 		return;
+	
+	// If the buffer is full, don't sent but raise the callback with a NULL packet
+	if (g->output_blocked) {
+		if (g->on_packet_gen)
+			g->on_packet_gen(NULL, g->on_packet_gen_data);
+		
+		g->send_packet = false;
+		return;
+	}
 	
 	// Determine the packet destination based on the current distribution
 	spinn_coord_t destination;

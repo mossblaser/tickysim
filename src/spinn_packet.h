@@ -134,7 +134,9 @@ void spinn_packet_pool_pfree(spinn_packet_pool_t *pool, spinn_packet_t *packet);
  * @param on_packet_gen Is a function called during the tock phase just after
  *                      packet creation but before it is sent. The value
  *                      returned is set as the packet payload. If NULL, the
- *                      callback is disabled.
+ *                      callback is disabled. If the output is blocked but a
+ *                      packet would have been generated if it wasnt, the value
+ *                      of packet is NULL.
  * @param on_packet_gen_data A pointer passed to the on_packet_gen function.
  */
 void spinn_packet_gen_cyclic_init( spinn_packet_gen_t *gen
@@ -170,7 +172,9 @@ void spinn_packet_gen_cyclic_init( spinn_packet_gen_t *gen
  * @param on_packet_gen Is a function called during the tock phase just after
  *                      packet creation but before it is sent. The value
  *                      returned is set as the packet payload. If NULL, the
- *                      callback is disabled.
+ *                      callback is disabled. If the output is blocked but a
+ *                      packet would have been generated if it wasnt, the value
+ *                      of packet is NULL.
  * @param on_packet_gen_data A pointer passed to the on_packet_gen function.
  */
 void spinn_packet_gen_uniform_init( spinn_packet_gen_t *gen

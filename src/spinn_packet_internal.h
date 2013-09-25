@@ -56,6 +56,9 @@ struct spinn_packet_gen {
 	// Should a packet be sent during the tock phase?
 	bool send_packet;
 	
+	// Is the output buffer full (i.e. should sending a packet fail?)?
+	bool output_blocked;
+	
 	// The distribution to use when generating packets.
 	spinn_packet_gen_dist_t dist;
 	

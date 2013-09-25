@@ -34,6 +34,7 @@ buffer_t b;
 spinn_packet_pool_t pool;
 spinn_packet_gen_t g;
 
+int packets_blocked;
 int packets_sent;
 
 void
@@ -42,6 +43,7 @@ check_spinn_packet_gen_setup(void)
 	scheduler_init(&s);
 	buffer_init(&b, BUFFER_SIZE);
 	spinn_packet_pool_init(&pool);
+	packets_blocked = 0;
 	packets_sent = 0;
 }
 
@@ -59,10 +61,12 @@ check_spinn_packet_gen_teardown(void)
 void *
 on_packet_gen(spinn_packet_t *p, void *data)
 {
-	ck_assert(p != NULL);
 	ck_assert_int_eq((int)data, 1234);
 	
-	packets_sent++;
+	if (p == NULL)
+		packets_blocked++;
+	else
+		packets_sent++;
 	
 	return (void *)4321;
 }
@@ -98,6 +102,7 @@ START_TEST (test_idle)
 	// Make sure nothing got sent...
 	ck_assert(buffer_is_empty(&b));
 	ck_assert_int_eq(packets_sent, 0);
+	ck_assert_int_eq(packets_blocked, 0);
 }
 END_TEST
 
@@ -129,6 +134,7 @@ START_TEST (test_certain)
 	}
 	
 	ck_assert_int_eq(packets_sent, BUFFER_SIZE);
+	ck_assert_int_eq(packets_blocked, 1);
 }
 END_TEST
 
@@ -158,6 +164,7 @@ START_TEST (test_50_50)
 	
 	ck_assert(packets_sent > 0);
 	ck_assert(packets_sent < BUFFER_SIZE);
+	ck_assert_int_eq(packets_blocked, 0);
 }
 END_TEST
 
@@ -198,6 +205,7 @@ START_TEST (test_cyclic_dist)
 	}
 	
 	ck_assert_int_eq(packets_sent, SYSTEM_SIZE_X*SYSTEM_SIZE_Y*2);
+	ck_assert_int_eq(packets_blocked, 0);
 }
 END_TEST
 
