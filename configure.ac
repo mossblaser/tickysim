@@ -29,5 +29,10 @@ AC_CONFIG_FILES([Makefile
 # to its also pulling in some other macros).
 AM_PATH_CHECK
 
+# Test that libconfig is available
+PKG_CHECK_MODULES([LIBCONFIG], [libconfig >= 1.4],,
+	AC_MSG_ERROR([libconfig 1.4 or newer not found.])
+)
+
 # Do all the configuration actions now! We're done.
 AC_OUTPUT

@@ -153,6 +153,22 @@ START_TEST (test_shortest_vector)
 }
 END_TEST
 
+#define ck_assert_coord_eq(a,b) do { spinn_coord_t a_ = a; spinn_coord_t b_ = b;\
+                                     ck_assert_int_eq((a_).x, (b_).x); \
+                                     ck_assert_int_eq((a_).y, (b_).y); \
+                                   } while (0)
+
+START_TEST (test_dir_to_vector)
+{
+	ck_assert_coord_eq(spinn_dir_to_vector(SPINN_EAST),       ((spinn_coord_t){ 1, 0}));
+	ck_assert_coord_eq(spinn_dir_to_vector(SPINN_NORTH_EAST), ((spinn_coord_t){ 1, 1}));
+	ck_assert_coord_eq(spinn_dir_to_vector(SPINN_NORTH),      ((spinn_coord_t){ 0, 1}));
+	ck_assert_coord_eq(spinn_dir_to_vector(SPINN_WEST),       ((spinn_coord_t){-1, 0}));
+	ck_assert_coord_eq(spinn_dir_to_vector(SPINN_SOUTH_WEST), ((spinn_coord_t){-1,-1}));
+	ck_assert_coord_eq(spinn_dir_to_vector(SPINN_SOUTH),      ((spinn_coord_t){ 0,-1}));
+}
+END_TEST
+
 
 Suite *
 make_spinn_topology_suite(void)
@@ -166,6 +182,7 @@ make_spinn_topology_suite(void)
 	tcase_add_test(tc_core, test_opposite);
 	tcase_add_test(tc_core, test_full_coord_minimise);
 	tcase_add_test(tc_core, test_shortest_vector);
+	tcase_add_test(tc_core, test_dir_to_vector);
 	
 	// Add each test case to the suite
 	suite_add_tcase(s, tc_core);

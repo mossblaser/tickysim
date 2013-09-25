@@ -57,6 +57,20 @@
 
 
 /**
+ * Get the spinn_coord_t which corresponds to each direction vector.
+ */
+#define spinn_dir_to_vector(d)                      \
+	(((spinn_coord_t[]){                              \
+		(spinn_coord_t){ 1, 0},/* SPINN_EAST */         \
+		(spinn_coord_t){ 1, 1},/* SPINN_NORTH_EAST */   \
+		(spinn_coord_t){ 0, 1},/* SPINN_NORTH */        \
+		(spinn_coord_t){-1, 0},/* SPINN_WEST */         \
+		(spinn_coord_t){-1,-1},/* SPINN_SOUTH_WEST */   \
+		(spinn_coord_t){ 0,-1},/* SPINN_SOUTH */        \
+	})[(d)])
+
+
+/**
  * Convert a spinn_full_coord_t into the unique minimal-magnitude form.
  */
 spinn_full_coord_t spinn_full_coord_minimise(spinn_full_coord_t coord);

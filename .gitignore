@@ -21,7 +21,7 @@ Session.vim
 
 # Executables
 *.exe
-src/tickysim
+src/tickysim_spinnaker
 tests/check_check
 
 # Autoconf litter
