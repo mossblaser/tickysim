@@ -9,10 +9,22 @@
 
 
 /**
+ * A value in a pipeline.
+ */
+typedef struct spinn_router_pipeline {
+	// Is the value valid (or is it a bubble?)
+	bool valid;
+	
+	// The value in the pipeline
+	void *data;
+} spinn_router_pipeline_t;
+
+
+/**
  * The structure representing a particular router. 
  */
 struct spinn_router {
-	// Ports (expected to supply/accept spinn_packet_t pointers.
+	// Ports (expected to supply/accept spinn_packet_t pointers).
 	buffer_t *input;
 	buffer_t *outputs[7];
 	
@@ -53,11 +65,20 @@ struct spinn_router {
 	// forwarded
 	spinn_emg_state_t cur_packet_emg_state;
 	
+	// Should a packet be accepted into the pipeline (if possible)
+	bool accept_packet;
+	
 	// Should the currrent packet be forwarded in the next tock?
 	bool forward_packet;
 	
 	// Should the currrent packet should be dropped in the next tock?
 	bool drop_packet;
+	
+	// Number of stages in the pipeline
+	int num_pipeline_stages;
+	
+	// A queue of pipeline stages which is advanced on each clock
+	spinn_router_pipeline_t *pipeline;
 };
 
 

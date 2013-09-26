@@ -23,11 +23,14 @@
  ******************************************************************************/
 
 #define ROUTER_PERIOD 3
+#define ROUTER_PIPELINE 4
 
 #define FIRST_TIMEOUT 20
 #define FINAL_TIMEOUT 80
 
-#define OUT_BUFFER_SIZE 2
+// Output buffer needs to be big enough to contain a whole pipeline worth of
+// data for the bubble test
+#define OUT_BUFFER_SIZE ROUTER_PIPELINE
 
 scheduler_t s;
 buffer_t input;
@@ -159,7 +162,7 @@ on_drop( spinn_router_t *router
 
 // Create a router with most arguments set to sensible defaults.
 #define INIT_ROUTER(use_emg_routing, on_forward, on_drop) \
-	spinn_router_init( &r, &s, ROUTER_PERIOD \
+	spinn_router_init( &r, &s, ROUTER_PERIOD, ROUTER_PIPELINE \
 	                 , &input, outputs_p \
 	                 , ((spinn_coord_t){0,0}) \
 	                 , (use_emg_routing) \
@@ -210,10 +213,20 @@ START_TEST (test_single_normal_packet)
 	
 	buffer_push(&input, (void *)&p);
 	
-	// Lets see what happens
-	scheduler_tick_tock(&s);
+	// Make sure nothing is routed before the packet is due at the end of the
+	// pipeline.
+	for (int tick = 0; tick < ROUTER_PIPELINE; tick ++) {
+		for (int i = 0; i < ROUTER_PERIOD; i ++)
+			scheduler_tick_tock(&s);
+		
+		ck_assert(buffer_is_empty(&input));
+		for (int i = 0; i < 7; i++)
+			ck_assert(buffer_is_empty(&(outputs[i])));
+	}
 	
-	// Make sure the right buffers are occupied
+	// The value should now have reached the end of the pipeline
+	for (int i = 0; i < ROUTER_PERIOD; i ++)
+		scheduler_tick_tock(&s);
 	ck_assert(buffer_is_empty(&input));
 	for (int i = 0; i < 7; i++) {
 		if (i == direction)
@@ -237,7 +250,7 @@ START_TEST (test_single_normal_packet)
 	// Make sure the callback happend as you'd hope.
 	ck_assert_int_eq(last_on_drop.num_calls,    0);
 	ck_assert_int_eq(last_on_forward.num_calls, 1);
-	ck_assert_int_eq(last_on_forward.time, 0);
+	ck_assert_int_eq(last_on_forward.time, ROUTER_PERIOD*ROUTER_PIPELINE);
 	ck_assert_int_eq(last_on_forward.packet, &p);
 	
 	// Make sure nothing else happens
@@ -282,8 +295,12 @@ START_TEST (test_multiple_normal_packet)
 		}
 	}
 	
+	// Allow the pipeline time to fill
+	for (int j = 0; j < ROUTER_PERIOD*ROUTER_PIPELINE; j++)
+		scheduler_tick_tock(&s);
+	
 	// Ensure that the packets appear at the outputs in the correct order and at
-	// the correct time.
+	// the correct rate
 	p = packets;
 	for (int i = 0; i < OUT_BUFFER_SIZE; i++) {
 		for (int direction = 0; direction < 6; direction++) {
@@ -346,8 +363,12 @@ START_TEST (test_normal_packet_arrival)
 		}
 	}
 	
+	// Allow the pipeline to fill
+	for (int j = 0; j < ROUTER_PERIOD*ROUTER_PIPELINE; j++)
+		scheduler_tick_tock(&s);
+	
 	// Ensure that the packets appear at the outputs in the correct order and at
-	// the correct time.
+	// the correct rate.
 	p = packets;
 	for (int i = 0; i < emg_types_len; i++) {
 		for (int direction = 0; direction < 7; direction++) {
@@ -428,6 +449,10 @@ START_TEST (test_normal_packet_drop)
 	                                  : FIRST_TIMEOUT
 	                                  ;
 	
+	// Allow the pipeline to fill up
+	for (int j = 0; j < ROUTER_PERIOD*ROUTER_PIPELINE; j++)
+		scheduler_tick_tock(&s);
+	
 	// See that the packets are duly dropped
 	p = packets;
 	for (int i = 0; i < emg_types_len; i++) {
@@ -485,6 +510,10 @@ START_TEST (test_emg_first_leg)
 		buffer_push(&(outputs[normal_direction]), NULL);
 	}
 	
+	// Allow the pipeline to fill up
+	for (int j = 0; j < ROUTER_PERIOD*ROUTER_PIPELINE; j++)
+		scheduler_tick_tock(&s);
+	
 	// See that the packet is forwarded after timing out to the emergency port
 	for (int j = 0; j < (ROUTER_PERIOD * (FIRST_TIMEOUT + 1)); j++)
 		scheduler_tick_tock(&s);
@@ -526,6 +555,10 @@ START_TEST (test_emg_second_leg)
 	
 	buffer_push(&input, (void *)p);
 	
+	// Allow the pipeline to fill up
+	for (int j = 0; j < ROUTER_PERIOD*ROUTER_PIPELINE; j++)
+		scheduler_tick_tock(&s);
+	
 	// See that the packet is forwarded immediately
 	for (int j = 0; j < ROUTER_PERIOD; j++)
 		scheduler_tick_tock(&s);
@@ -538,6 +571,97 @@ START_TEST (test_emg_second_leg)
 	ck_assert(last_on_forward.packet == p);
 	ck_assert_int_eq(p->emg_state, SPINN_EMG_SECOND_LEG);
 	ck_assert_int_eq(p->direction, spinn_next_cw(spinn_opposite(direction)));
+}
+END_TEST
+
+
+
+/**
+ * Test that the pipeline can cope with inconsistent fill levels.
+ *
+ * For n < pipeline length:
+ *   The pipeline is filled with a N entries (one every other router cycle)
+ *   which are allowed to make their way to the end of the pipeline (squashing
+ *   together in the process). When this has occurred, the output buffer will be
+ *   cleared to allow the packets to exit one per router period.
+ */
+START_TEST (test_bubbles)
+{
+	INIT_ROUTER(false, on_forward, on_drop);
+	
+	// Initialise up a series of packets destined for the router's local buffer
+	// (which will later be put into the input buffer)
+	spinn_packet_t *p = packets;
+	for (int i = 0; i < _i; i++) {
+		p->inflection_point     = (spinn_coord_t){-1,-1};
+		p->inflection_direction = SPINN_NORTH;
+		p->destination          = (spinn_coord_t){0,0};
+		p->direction            = SPINN_NORTH;
+		p->emg_state            = SPINN_EMG_NORMAL;
+		p->payload              = NULL;
+		// Advance to the next packet
+		p++;
+	}
+	
+	// Fill up all the output buffers to ensure that all packets will be dropped
+	for (int j = 0; j < OUT_BUFFER_SIZE; j++) {
+		buffer_push(&(outputs[SPINN_LOCAL]), NULL);
+	}
+	
+	// Add things to the input port every other cycle, all the while nothing
+	// should get sent.
+	p = packets;
+	for (int i = 0; i < _i; i++) {
+		buffer_push(&input, p++);
+		
+		for (int j = 0; j < ROUTER_PERIOD*2; j++) {
+			scheduler_tick_tock(&s);
+			
+			ck_assert_int_eq(last_on_forward.num_calls, 0);
+			ck_assert_int_eq(last_on_drop.num_calls, 0);
+		}
+	}
+	
+	// We should now allow the pipeline time for the last packet to reach its
+	// resting point
+	for (int j = 0; j < ROUTER_PERIOD*(ROUTER_PIPELINE-_i); j++) {
+		scheduler_tick_tock(&s);
+		ck_assert_int_eq(last_on_forward.num_calls, 0);
+		ck_assert_int_eq(last_on_drop.num_calls, 0);
+	}
+	
+	// If the output buffer is now cleared completely, the packets should all
+	// arrive at full speed
+	for (int j = 0; j < OUT_BUFFER_SIZE; j++) {
+		buffer_pop(&(outputs[SPINN_LOCAL]));
+	}
+	
+	// See that the packets are received at the correct rate
+	p = packets;
+	for (int i = 0; i < _i; i++) {
+		for (int j = 0; j < ROUTER_PERIOD; j++)
+			scheduler_tick_tock(&s);
+		
+		// Check the packet arrived
+		ck_assert_int_eq(last_on_forward.num_calls, i+1);
+		ck_assert_int_eq(last_on_drop.num_calls, 0);
+		
+		// Check the packet was the correct one
+		ck_assert(last_on_forward.packet != NULL);
+		ck_assert(last_on_forward.packet == p);
+		
+		// And that it got dropped on exactly this router cycle
+		ck_assert_int_eq(last_on_forward.time, scheduler_get_ticks(&s) - ROUTER_PERIOD);
+		
+		// Advance to the next packet
+		p++;
+	}
+	
+	// See that nothing more comes through
+	for (int j = 0; j < ROUTER_PERIOD; j++)
+		scheduler_tick_tock(&s);
+	ck_assert_int_eq(last_on_forward.num_calls, _i);
+	ck_assert_int_eq(last_on_drop.num_calls, 0);
 }
 END_TEST
 
@@ -557,6 +681,7 @@ make_spinn_router_suite(void)
 	tcase_add_loop_test(tc_core, test_normal_packet_drop, 0, 2);
 	tcase_add_loop_test(tc_core, test_emg_first_leg, 0, 6*2);
 	tcase_add_loop_test(tc_core, test_emg_second_leg, 0, 6);
+	tcase_add_loop_test(tc_core, test_bubbles, 1, ROUTER_PIPELINE+1);
 	
 	// Add each test case to the suite
 	suite_add_tcase(s, tc_core);

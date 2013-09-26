@@ -70,6 +70,7 @@ typedef struct spinn_router spinn_router_t;
 void spinn_router_init( spinn_router_t *router
                       , scheduler_t    *scheduler
                       , ticks_t         period
+                      , int             num_pipeline_stages
                       , buffer_t       *input
                       , buffer_t       *outputs[7]
                       , spinn_coord_t   position
@@ -87,12 +88,6 @@ void spinn_router_init( spinn_router_t *router
                                                   )
                       , void            *on_drop_data
                       );
-
-
-/**
- * Get the position of the specified router.
- */
-spinn_coord_t router_get_position(spinn_router_t *router);
 
 
 /**

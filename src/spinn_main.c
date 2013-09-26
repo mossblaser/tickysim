@@ -365,12 +365,14 @@ spinn_node_init( spinn_simulation_t *sim
 	
 	// Set up the router
 	int router_period = spinn_config_lookup_int(sim, "model.router.period");
+	int router_pipeline_length = spinn_config_lookup_int(sim, "model.router.pipeline_length");
 	bool use_emg_routing = spinn_config_lookup_bool(sim, "model.router.use_emergency_routing");
 	int first_timeout = spinn_config_lookup_int(sim, "model.router.first_timeout");
 	int final_timeout = spinn_config_lookup_int(sim, "model.router.final_timeout");
 	spinn_router_init( &(node->router)
 	                 , &(sim->scheduler)
 	                 , router_period
+	                 , router_pipeline_length
 	                 , &(node->arb_last_out)
 	                 , output_buffers
 	                 , node->position

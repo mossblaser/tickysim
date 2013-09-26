@@ -56,45 +56,50 @@ spinn_router_tick(void *r_)
 {
 	spinn_router_t *r = (spinn_router_t *)r_;
 	
-	// If there no packet to route, give up
-	if (buffer_is_empty(r->input))
-		return;
-	
-	spinn_packet_t *p = buffer_peek(r->input);
-	
-	// Find out the intended direction and emergency mode of the packet
-	switch (p->emg_state) {
-		case SPINN_EMG_NORMAL:
-		case SPINN_EMG_SECOND_LEG:
-			r->selected_output_direction = get_packet_output_direction(r, p);
-			if (r->use_emg_routing && r->time_elapsed >= r->first_timeout) {
-				r->cur_packet_emg_state      = SPINN_EMG_FIRST_LEG;
-				r->selected_output_direction = spinn_next_cw(r->selected_output_direction);
-			} else {
-				r->cur_packet_emg_state = SPINN_EMG_NORMAL;
-			}
-			break;
+	// If there is packet to route or drop, do so
+	if (r->pipeline[r->num_pipeline_stages-1].valid) {
+		spinn_packet_t *p = r->pipeline[r->num_pipeline_stages-1].data;
 		
-		case SPINN_EMG_FIRST_LEG:
-			r->cur_packet_emg_state = SPINN_EMG_SECOND_LEG;
-			r->selected_output_direction = spinn_next_cw(spinn_opposite(p->direction));
-			break;
+		// Find out the intended direction and emergency mode of the packet
+		switch (p->emg_state) {
+			case SPINN_EMG_NORMAL:
+			case SPINN_EMG_SECOND_LEG:
+				r->selected_output_direction = get_packet_output_direction(r, p);
+				if (r->use_emg_routing && r->time_elapsed >= r->first_timeout) {
+					r->cur_packet_emg_state      = SPINN_EMG_FIRST_LEG;
+					r->selected_output_direction = spinn_next_cw(r->selected_output_direction);
+				} else {
+					r->cur_packet_emg_state = SPINN_EMG_NORMAL;
+				}
+				break;
+			
+			case SPINN_EMG_FIRST_LEG:
+				r->cur_packet_emg_state = SPINN_EMG_SECOND_LEG;
+				r->selected_output_direction = spinn_next_cw(spinn_opposite(p->direction));
+				break;
+		}
+		
+		r->forward_packet = false;
+		r->drop_packet    = false;
+		
+		if (!buffer_is_full(r->outputs[r->selected_output_direction])) {
+			// Is the output available? Forward the packet to this port!
+			r->forward_packet = true;
+		} else if (!r->use_emg_routing &&
+		           p->emg_state != SPINN_EMG_FIRST_LEG &&
+		           r->time_elapsed >= r->first_timeout) {
+			// Drop the packet as emergency routing is disabled and it has timed out
+			r->drop_packet = true;
+		} else if ( (p->emg_state == SPINN_EMG_FIRST_LEG &&
+		             r->time_elapsed > r->first_timeout) ||
+		           r->time_elapsed >= r->first_timeout + r->final_timeout){
+			// TODO: Drop the timed-out emergency routed packet
+			r->drop_packet = true;
+		}
 	}
 	
-	if (!buffer_is_full(r->outputs[r->selected_output_direction])) {
-		// Is the output available? Forward the packet to this port!
-		r->forward_packet = true;
-	} else if (!r->use_emg_routing &&
-	           p->emg_state != SPINN_EMG_FIRST_LEG &&
-	           r->time_elapsed >= r->first_timeout) {
-		// Drop the packet as emergency routing is disabled and it has timed out
-		r->drop_packet = true;
-	} else if ( (p->emg_state == SPINN_EMG_FIRST_LEG &&
-	             r->time_elapsed > r->first_timeout) ||
-	           r->time_elapsed >= r->first_timeout + r->final_timeout){
-		// TODO: Drop the timed-out emergency routed packet
-		r->drop_packet = true;
-	}
+	// If a packet is available it may be possible to add it to the pipeline
+	r->accept_packet = !buffer_is_empty(r->input);
 }
 
 
@@ -103,16 +108,17 @@ spinn_router_tock(void *r_)
 {
 	spinn_router_t *r = (spinn_router_t *)r_;
 	
-	// If there no packet to be sent, nothing to do so give up now!
-	if (buffer_is_empty(r->input)) {
-		return;
+	// Deal with sending of packets
+	if (!r->pipeline[r->num_pipeline_stages-1].valid) {
+		// No packet at the end of the pipeline: do nothing
 	} else if (!r->forward_packet && !r->drop_packet) {
-		// If no forwarding/dropping to do, just advance the clock and stop
+		// If no forwarding/dropping to do, just advance the clock
 		r->time_elapsed++;
-		return;
 	} else {
-		// Grab the packet from the input buffer
-		spinn_packet_t *p = buffer_pop(r->input);
+		// Grab the packet from the end of the pipeline (and invalidate the value
+		// there to allow the pipeline to advance)
+		spinn_packet_t *p = r->pipeline[r->num_pipeline_stages-1].data;
+		r->pipeline[r->num_pipeline_stages-1].valid = false;
 		
 		if (r->forward_packet) {
 			// Set the packet flags
@@ -126,14 +132,26 @@ spinn_router_tock(void *r_)
 			if (r->on_forward != NULL)
 				r->on_forward(r, p, r->on_forward_data);
 		} else if (r->drop_packet && r->on_drop != NULL) {
-			// Drop the packet at the input
+			// Drop the packet (just call the callback)
 			r->on_drop(r, p, r->on_drop_data);
 		}
 		
 		// Reset router state ready for next packet
-		r->drop_packet = false;
-		r->forward_packet = false;
 		r->time_elapsed = 0;
+	}
+	
+	// Advance the pipeline
+	for (int i = r->num_pipeline_stages-1; i >= 1; i--) {
+		if (!r->pipeline[i].valid) {
+			r->pipeline[i] = r->pipeline[i-1];
+			r->pipeline[i-1].valid = false;
+		}
+	}
+	
+	// Attempt to accept a packet if possible
+	if (r->accept_packet && !r->pipeline[0].valid) {
+		r->pipeline[0].valid = true;
+		r->pipeline[0].data  = buffer_pop(r->input);
 	}
 }
 
@@ -146,6 +164,7 @@ void
 spinn_router_init( spinn_router_t *r
                  , scheduler_t    *s
                  , ticks_t         period
+                 , int             num_pipeline_stages
                  , buffer_t       *input
                  , buffer_t       *outputs[7]
                  , spinn_coord_t   position
@@ -166,8 +185,13 @@ spinn_router_init( spinn_router_t *r
 {
 	// Initialise internal fields
 	r->time_elapsed              = 0;
-	r->forward_packet            = false;
-	r->drop_packet               = false;
+	
+	// Set up the pipeline
+	r->num_pipeline_stages = num_pipeline_stages;
+	r->pipeline = calloc(r->num_pipeline_stages, sizeof(spinn_router_pipeline_t));
+	assert(r->pipeline != NULL);
+	for (int i = 0; i < r->num_pipeline_stages; i++)
+		r->pipeline[i].valid = false;
 	
 	// Copy fields from parameters
 	r->input = input;
@@ -193,17 +217,10 @@ spinn_router_init( spinn_router_t *r
 }
 
 
-spinn_coord_t
-router_get_position(spinn_router_t *r)
-{
-	return r->position;
-}
-
-
 void
 spinn_router_destroy(spinn_router_t *r)
 {
-	// Nothing to do
+	free(r->pipeline);
 }
 
 
