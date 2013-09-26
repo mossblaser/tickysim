@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <assert.h>
+#include <time.h>
 
 #include <libconfig.h>
 
@@ -21,6 +22,7 @@
 #include "spinn_topology.h"
 #include "spinn_packet.h"
 #include "spinn_router.h"
+#include "spinn_stat.h"
 
 /******************************************************************************
  * Data structures
@@ -87,6 +89,10 @@ typedef struct spinn_simulation {
 	
 	// The size of the simulation
 	spinn_coord_t system_size;
+	
+	// Stat counters
+	spinn_stat_inj_t inj_stats;
+	spinn_stat_con_t con_stats;
 } spinn_simulation_t;
 
 
@@ -293,7 +299,7 @@ spinn_node_init( spinn_simulation_t *sim
 	
 	// Packet generator
 	int gen_period = spinn_config_lookup_int(sim, "model.packet_generator.period");
-	int gen_prob = spinn_config_lookup_float(sim, "model.packet_generator.bernoulli_prob");
+	double gen_prob = spinn_config_lookup_float(sim, "model.packet_generator.bernoulli_prob");
 	const char *gen_cyclic = spinn_config_lookup_string(sim, "model.packet_generator.dist");
 	if (strcmp(gen_cyclic, "cyclic") == 0) {
 		spinn_packet_gen_cyclic_init( &(node->packet_gen)
@@ -304,7 +310,7 @@ spinn_node_init( spinn_simulation_t *sim
 		                            , sim->system_size
 		                            , gen_period
 		                            , gen_prob
-		                            , NULL, NULL
+		                            , spinn_stat_inj_on_packet_gen, (void *)&(sim->inj_stats)
 		                            );
 	} else if (strcmp(gen_cyclic, "uniform") == 0) {
 		spinn_packet_gen_uniform_init( &(node->packet_gen)
@@ -315,7 +321,7 @@ spinn_node_init( spinn_simulation_t *sim
 		                             , sim->system_size
 		                             , gen_period
 		                             , gen_prob
-		                             , NULL, NULL
+		                             , spinn_stat_inj_on_packet_gen, (void *)&(sim->inj_stats)
 		                             );
 	} else {
 		fprintf(stderr, "Error: packet_generator.dist not recognised!\n");
@@ -324,14 +330,14 @@ spinn_node_init( spinn_simulation_t *sim
 	
 	// Packet consumer
 	int con_period = spinn_config_lookup_int(sim, "model.packet_consumer.period");
-	int con_prob = spinn_config_lookup_float(sim, "model.packet_consumer.bernoulli_prob");
+	double con_prob = spinn_config_lookup_float(sim, "model.packet_consumer.bernoulli_prob");
 	spinn_packet_con_init( &(node->packet_con)
 	                     , &(sim->scheduler)
 	                     , &(node->local_out)
 	                     , &(sim->pool)
 	                     , con_period
 	                     , con_prob
-	                     , NULL, NULL
+		                   , spinn_stat_con_on_packet_gen, (void *)&(sim->con_stats)
 	                     );
 	
 	// Get a pointer to each of the output buffers
@@ -419,6 +425,11 @@ spinn_simulation_init(spinn_simulation_t *sim, const char *config_filename)
 	sim->system_size.x = spinn_config_lookup_int(sim, "model.system_size.width");
 	sim->system_size.y = spinn_config_lookup_int(sim, "model.system_size.height");
 	
+	// Reset the stat counters
+	sim->inj_stats.num_offered  = 0;
+	sim->inj_stats.num_accepted = 0;
+	sim->con_stats.num_packets  = 0;
+	
 	// Create the required number of nodes
 	sim->nodes = calloc( sim->system_size.x*sim->system_size.y
 	                   , sizeof(spinn_node_t)
@@ -432,14 +443,37 @@ spinn_simulation_init(spinn_simulation_t *sim, const char *config_filename)
 	}
 }
 
+
 void
 spinn_simulation_run(spinn_simulation_t *sim)
 {
 	ticks_t duration = spinn_config_lookup_int(sim, "simulation.duration");
 	
+	time_t last_status = 0;
+	ticks_t last_ticks = 0;
+	
 	for (ticks_t i = 0; i < duration; i++) {
+		time_t time_now = time(NULL);
+		if (time_now != last_status) {
+			ticks_t delta = i - last_ticks;
+			fprintf(stderr, "Simulation Time: % 8d (+%5d)\n", i, delta);
+			last_ticks = i;
+			last_status = time_now;
+			
+			// Time per node
+			time_t tpn = delta * sim->system_size.x * sim->system_size.y;
+			fprintf(stderr, "Offered: %0.3f Accepted: %0.3f Delta: %0.3f Arrived: %0.3f\n"
+			              , (double)sim->inj_stats.num_offered / (double)tpn
+			              , (double)sim->inj_stats.num_accepted / (double)tpn
+			              , (double)(sim->inj_stats.num_offered - sim->inj_stats.num_accepted) / (double)tpn
+			              , (double)sim->con_stats.num_packets / (double)tpn
+			              );
+			
+			sim->inj_stats.num_offered = 0;
+			sim->inj_stats.num_accepted = 0;
+			sim->con_stats.num_packets = 0;
+		}
 		scheduler_tick_tock(&(sim->scheduler));
-		fprintf(stderr, "Time: %d\n", i);
 	}
 }
 

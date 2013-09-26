@@ -14,6 +14,7 @@ tickysim_spinnaker_SOURCES += spinn.h
 tickysim_spinnaker_SOURCES += spinn_topology.c spinn_topology.h
 tickysim_spinnaker_SOURCES += spinn_packet.c spinn_packet.h spinn_packet_internal.h
 tickysim_spinnaker_SOURCES += spinn_router.c spinn_router.h spinn_router_internal.h
+tickysim_spinnaker_SOURCES += spinn_stat.c spinn_stat.h
 
 # Include libconfig in the build
 tickysim_spinnaker_CPPFLAGS = $(LIBCONFIG_CFLAGS)
