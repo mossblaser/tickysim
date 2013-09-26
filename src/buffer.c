@@ -2,6 +2,9 @@
  * TickySim -- A timing based interconnection network simulator.
  *
  * buffer.c -- A generic buffer implementation.
+ *
+ * These buffers are not clocked in any way. They can push and pop an arbitary
+ * number of packets per cycle.
  */
 
 #include <stdlib.h>

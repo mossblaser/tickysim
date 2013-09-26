@@ -2,6 +2,11 @@
  * TickySim -- A timing based interconnection network simulator.
  *
  * spinn_router.h -- A SpiNNaker router model.
+ *
+ * The router, once per period, will check its input buffer for a new packet
+ * and, if the output port is not blocked, will pop the packet from the input
+ * and push it into the output. The throughput and the latency of the router are
+ * therefore one packet per cycle and one cycle respectively.
  */
 
 

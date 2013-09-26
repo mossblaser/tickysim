@@ -4,6 +4,9 @@
  * arbiter.c -- A round-robbin arbiter which at a regular period attempts to
  * forward values from a set of input buffers into a single output buffer using
  * a round-robbin approach in the case of contention.
+ *
+ * The arbiter has a throughput of one packet per cycle and a latency of one
+ * cycle.
  */
 
 
