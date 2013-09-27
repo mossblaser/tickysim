@@ -24,6 +24,7 @@ main(int argc, char *argv[])
 	srunner_add_suite(sr, make_arbiter_suite());
 	srunner_add_suite(sr, make_buffer_suite());
 	srunner_add_suite(sr, make_scheduler_suite());
+	srunner_add_suite(sr, make_delay_suite());
 	srunner_add_suite(sr, make_spinn_topology_suite());
 	srunner_add_suite(sr, make_spinn_router_suite());
 	srunner_add_suite(sr, make_spinn_packet_init_dor());
