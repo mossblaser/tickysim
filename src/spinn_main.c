@@ -17,6 +17,7 @@
 #include "scheduler.h"
 #include "buffer.h"
 #include "arbiter.h"
+#include "delay.h"
 
 #include "spinn.h"
 #include "spinn_topology.h"
@@ -52,9 +53,11 @@ typedef struct spinn_node {
 	
 	arbiter_t arb_last;
 	
-	// Buffers which (eventually, via some arbiters) connect to the inputs of the
-	// router
-	buffer_t inputs[7];
+	// Buffers on either side of a delay model which (eventually, via some
+	// arbiters) connect to the inputs of the router
+	buffer_t front_inputs[7];
+	buffer_t back_inputs[7];
+	delay_t node_to_node_delay[7];
 	
 	// Buffer which represents the local core
 	buffer_t local_out;
@@ -214,11 +217,23 @@ spinn_node_init( spinn_simulation_t *sim
 {
 	node->position = position;
 	
-	// Create buffers
-	int input_buffer_length = spinn_config_lookup_int(sim, "model.node_to_node_buffers.length");
-	for (int i = 0; i < 7; i++)
-		buffer_init(&(node->inputs[i]), input_buffer_length);
+	// Create node-to-node links
+	int front_input_buffer_length = spinn_config_lookup_int(sim, "model.node_to_node_links.front_buffer_length");
+	int back_input_buffer_length = spinn_config_lookup_int(sim, "model.node_to_node_links.back_buffer_length");
+	int delay = spinn_config_lookup_int(sim, "model.node_to_node_links.packet_delay");
+	for (int i = 0; i < 7; i++) {
+		buffer_init(&(node->front_inputs[i]), front_input_buffer_length);
+		buffer_init(&(node->back_inputs[i]), back_input_buffer_length);
+		delay_init( &(node->node_to_node_delay[i])
+		          , &(sim->scheduler)
+		          , 1
+		          , delay
+		          , &(node->front_inputs[i])
+		          , &(node->back_inputs[i])
+		          );
+	}
 	
+	// Create buffers
 	int local_buffer_length = spinn_config_lookup_int(sim, "model.packet_consumer.buffer_length");
 	buffer_init(&(node->local_out), local_buffer_length);
 	
@@ -258,7 +273,7 @@ spinn_node_init( spinn_simulation_t *sim
 	            );
 	
 	buffer_t *arb_ne_sw_l_inputs[] = { &(node->arb_ne_sw_out) 
-	                                 , &(node->inputs[SPINN_LOCAL])
+	                                 , &(node->back_inputs[SPINN_LOCAL])
 	                                 };
 	arbiter_init( &(node->arb_ne_sw_l)
 	            , &(sim->scheduler)
@@ -267,8 +282,8 @@ spinn_node_init( spinn_simulation_t *sim
 	            , &(node->arb_ne_sw_l_out)
 	            );
 	
-	buffer_t *arb_n_s_inputs[] = { &(node->inputs[SPINN_NORTH]) 
-	                             , &(node->inputs[SPINN_SOUTH])
+	buffer_t *arb_n_s_inputs[] = { &(node->back_inputs[SPINN_NORTH]) 
+	                             , &(node->back_inputs[SPINN_SOUTH])
 	                             };
 	arbiter_init( &(node->arb_n_s)
 	            , &(sim->scheduler)
@@ -277,8 +292,8 @@ spinn_node_init( spinn_simulation_t *sim
 	            , &(node->arb_n_s_out)
 	            );
 	
-	buffer_t *arb_e_w_inputs[] = { &(node->inputs[SPINN_EAST]) 
-	                             , &(node->inputs[SPINN_WEST])
+	buffer_t *arb_e_w_inputs[] = { &(node->back_inputs[SPINN_EAST]) 
+	                             , &(node->back_inputs[SPINN_WEST])
 	                             };
 	arbiter_init( &(node->arb_e_w)
 	            , &(sim->scheduler)
@@ -287,8 +302,8 @@ spinn_node_init( spinn_simulation_t *sim
 	            , &(node->arb_e_w_out)
 	            );
 	
-	buffer_t *arb_ne_sw_inputs[] = { &(node->inputs[SPINN_NORTH_EAST]) 
-	                               , &(node->inputs[SPINN_SOUTH_WEST])
+	buffer_t *arb_ne_sw_inputs[] = { &(node->back_inputs[SPINN_NORTH_EAST]) 
+	                               , &(node->back_inputs[SPINN_SOUTH_WEST])
 	                               };
 	arbiter_init( &(node->arb_ne_sw)
 	            , &(sim->scheduler)
@@ -305,7 +320,7 @@ spinn_node_init( spinn_simulation_t *sim
 	if (strcmp(gen_cyclic, "cyclic") == 0) {
 		spinn_packet_gen_cyclic_init( &(node->packet_gen)
 		                            , &(sim->scheduler)
-		                            , &(node->inputs[SPINN_LOCAL])
+		                            , &(node->front_inputs[SPINN_LOCAL])
 		                            , &(sim->pool)
 		                            , node->position
 		                            , sim->system_size
@@ -316,7 +331,7 @@ spinn_node_init( spinn_simulation_t *sim
 	} else if (strcmp(gen_cyclic, "uniform") == 0) {
 		spinn_packet_gen_uniform_init( &(node->packet_gen)
 		                             , &(sim->scheduler)
-		                             , &(node->inputs[SPINN_LOCAL])
+		                             , &(node->front_inputs[SPINN_LOCAL])
 		                             , &(sim->pool)
 		                             , node->position
 		                             , sim->system_size
@@ -360,7 +375,7 @@ spinn_node_init( spinn_simulation_t *sim
 		                  % sim->system_size.y;
 		spinn_node_t *neighbour = &(sim->nodes[(neighbour_pos.y * sim->system_size.x)
 		                                       + neighbour_pos.x]);
-		output_buffers[i] = &(neighbour->inputs[spinn_opposite(directions[i])]);
+		output_buffers[i] = &(neighbour->front_inputs[spinn_opposite(directions[i])]);
 	}
 	output_buffers[SPINN_LOCAL] = &(node->local_out);
 	
@@ -400,8 +415,11 @@ spinn_node_destroy(spinn_node_t *node)
 	arbiter_destroy(&(node->arb_ne_sw_l));
 	arbiter_destroy(&(node->arb_last));
 	
-	for (int i = 0; i < 7; i++)
-		buffer_destroy(&(node->inputs[i]));
+	for (int i = 0; i < 7; i++) {
+		buffer_destroy(&(node->front_inputs[i]));
+		buffer_destroy(&(node->back_inputs[i]));
+		delay_destroy(&(node->node_to_node_delay[i]));
+	}
 	buffer_destroy(&(node->local_out));
 	buffer_destroy(&(node->arb_n_s_out));
 	buffer_destroy(&(node->arb_e_w_out));
@@ -451,36 +469,63 @@ spinn_simulation_init(spinn_simulation_t *sim, const char *config_filename)
 void
 spinn_simulation_run(spinn_simulation_t *sim)
 {
-	ticks_t duration = spinn_config_lookup_int(sim, "simulation.duration");
+	ticks_t warmup_duration = spinn_config_lookup_int(sim, "simulation.warmup_duration");
+	ticks_t sample_duration = spinn_config_lookup_int(sim, "simulation.sample_duration");
+	int     num_samples     = spinn_config_lookup_int(sim, "simulation.num_samples");
 	
-	time_t last_status = 0;
-	ticks_t last_ticks = 0;
+	// The last time a debug message was printed
+	time_t last_debug = time(NULL);
 	
-	for (ticks_t i = 0; i < duration; i++) {
-		time_t time_now = time(NULL);
-		if (time_now != last_status) {
-			ticks_t delta = i - last_ticks;
-			fprintf(stderr, "Simulation Time: % 8d (+%5d)\n", i, delta);
-			last_ticks = i;
-			last_status = time_now;
-			
-			// Time per node
-			time_t tpn = delta * sim->system_size.x * sim->system_size.y;
-			fprintf(stderr, "Offered: %0.6f Accepted: %0.6f Delta: %0.6f Arrived: %0.6f Dropped %0.6f\n"
-			              , (double)sim->inj_stats.num_offered / (double)tpn
-			              , (double)sim->inj_stats.num_accepted / (double)tpn
-			              , (double)(sim->inj_stats.num_offered - sim->inj_stats.num_accepted) / (double)tpn
-			              , (double)sim->con_stats.num_packets / (double)tpn
-			              , (double)sim->drop_stats.num_packets / (double)tpn
-			              );
-			
-			sim->inj_stats.num_offered = 0;
-			sim->inj_stats.num_accepted = 0;
-			sim->con_stats.num_packets = 0;
-			sim->drop_stats.num_packets = 0;
-		}
+	// The number of ticks when the last debug message was printed
+	ticks_t last_num_ticks = 0;
+	
+	fprintf(stderr, "Warmup starting...\n");
+	
+	// Warmup
+	for (ticks_t t = 0; t < warmup_duration; t++) {
 		scheduler_tick_tock(&(sim->scheduler));
+		
+		time_t now = time(NULL);
+		if (last_debug != now) {
+			fprintf(stderr, "Warmup: %3d%% (%7d/%7d, %d ticks/s)\n"
+			              , (t*100) / warmup_duration
+			              , t, warmup_duration
+			              , scheduler_get_ticks(&(sim->scheduler)) - last_num_ticks
+			              );
+			last_debug     = now;
+			last_num_ticks = scheduler_get_ticks(&(sim->scheduler));
+		}
 	}
+	
+	// Take samples
+	for (int i = 0; i < num_samples; i++) {
+		// TODO: Reset stats
+		
+		fprintf(stderr, "\nSample %2d/%2d starting...\n"
+		              , i+1, num_samples
+		              );
+		
+		// Run the sample
+		for (ticks_t t = 0; t < sample_duration; t++) {
+			scheduler_tick_tock(&(sim->scheduler));
+			
+			time_t now = time(NULL);
+			if (last_debug != now) {
+				fprintf(stderr, "Sample %2d/%2d: %3d%% (%7d/%7d, %d ticks/s)\n"
+				              , i+1, num_samples
+				              , (t*100) / warmup_duration
+				              , t, warmup_duration
+			                , scheduler_get_ticks(&(sim->scheduler)) - last_num_ticks
+				              );
+				last_debug     = now;
+				last_num_ticks = scheduler_get_ticks(&(sim->scheduler));
+			}
+		}
+		
+		// TODO: Dump stats
+	}
+	
+	fprintf(stderr, "\nSimulation terminated.\n");
 }
 
 
