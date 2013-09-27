@@ -7,7 +7,9 @@
 #ifndef SPINN_STAT_H
 #define SPINN_STAT_H
 
+#include "spinn.h"
 #include "spinn_packet.h"
+#include "spinn_router.h"
 
 /******************************************************************************
  * Packet injection stats
@@ -46,8 +48,31 @@ typedef struct spinn_stat_con {
 /**
  * A callback function for spinn_packet_con's on_packet_con callback. Assumes
  * that the data passed along with it is a pointer to an initialised
- * spinn_stat_con;
+ * spinn_stat_con_t;
  */
 void spinn_stat_con_on_packet_gen(spinn_packet_t *packet, void *data);
+
+
+/******************************************************************************
+ * Packet dropping stats
+ ******************************************************************************/
+
+/**
+ * Provides two simple counters of the number of packets which arrived at a node.
+ */
+typedef struct spinn_stat_drop {
+	int num_packets;
+} spinn_stat_drop_t;
+
+
+/**
+ * A callback function for spinn_router's on_packet_drop callback. Assumes
+ * that the data passed along with it is a pointer to an initialised
+ * spinn_stat_drop_t;
+ */
+void spinn_stat_drop_on_drop( spinn_router_t *router
+                            , spinn_packet_t *packet
+                            , void *data
+                            );
 
 #endif

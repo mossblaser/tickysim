@@ -91,8 +91,9 @@ typedef struct spinn_simulation {
 	spinn_coord_t system_size;
 	
 	// Stat counters
-	spinn_stat_inj_t inj_stats;
-	spinn_stat_con_t con_stats;
+	spinn_stat_inj_t  inj_stats;
+	spinn_stat_con_t  con_stats;
+	spinn_stat_drop_t drop_stats;
 } spinn_simulation_t;
 
 
@@ -380,7 +381,7 @@ spinn_node_init( spinn_simulation_t *sim
 	                 , first_timeout
 	                 , final_timeout
 	                 , NULL, NULL
-	                 , NULL, NULL
+		               , spinn_stat_drop_on_drop, (void *)&(sim->drop_stats)
 	                 );
 }
 
@@ -431,6 +432,7 @@ spinn_simulation_init(spinn_simulation_t *sim, const char *config_filename)
 	sim->inj_stats.num_offered  = 0;
 	sim->inj_stats.num_accepted = 0;
 	sim->con_stats.num_packets  = 0;
+	sim->drop_stats.num_packets = 0;
 	
 	// Create the required number of nodes
 	sim->nodes = calloc( sim->system_size.x*sim->system_size.y
@@ -464,16 +466,18 @@ spinn_simulation_run(spinn_simulation_t *sim)
 			
 			// Time per node
 			time_t tpn = delta * sim->system_size.x * sim->system_size.y;
-			fprintf(stderr, "Offered: %0.3f Accepted: %0.3f Delta: %0.3f Arrived: %0.3f\n"
+			fprintf(stderr, "Offered: %0.6f Accepted: %0.6f Delta: %0.6f Arrived: %0.6f Dropped %0.6f\n"
 			              , (double)sim->inj_stats.num_offered / (double)tpn
 			              , (double)sim->inj_stats.num_accepted / (double)tpn
 			              , (double)(sim->inj_stats.num_offered - sim->inj_stats.num_accepted) / (double)tpn
 			              , (double)sim->con_stats.num_packets / (double)tpn
+			              , (double)sim->drop_stats.num_packets / (double)tpn
 			              );
 			
 			sim->inj_stats.num_offered = 0;
 			sim->inj_stats.num_accepted = 0;
 			sim->con_stats.num_packets = 0;
+			sim->drop_stats.num_packets = 0;
 		}
 		scheduler_tick_tock(&(sim->scheduler));
 	}

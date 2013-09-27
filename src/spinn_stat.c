@@ -14,6 +14,7 @@
 #include "spinn.h"
 #include "spinn_stat.h"
 #include "spinn_packet.h"
+#include "spinn_router.h"
 
 
 void *
@@ -37,3 +38,14 @@ spinn_stat_con_on_packet_gen(spinn_packet_t *packet, void *con_)
 	con->num_packets++;
 }
 
+
+void
+spinn_stat_drop_on_drop( spinn_router_t *router
+                       , spinn_packet_t *packet
+                       , void *drop_
+                       )
+{
+	spinn_stat_drop_t *drop = (spinn_stat_drop_t *)drop_;
+	
+	drop->num_packets++;
+}
