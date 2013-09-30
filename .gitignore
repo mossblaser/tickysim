@@ -24,6 +24,9 @@ Session.vim
 src/tickysim_spinnaker
 tests/check_check
 
+# Results
+/results
+
 # Autoconf litter
 Makefile
 Makefile.in
