@@ -26,6 +26,9 @@ typedef struct spinn_packet {
 	spinn_coord_t     inflection_point;
 	spinn_direction_t inflection_direction;
 	
+	// The the location where the packet was injected
+	spinn_coord_t source;
+	
 	// The intended destination of the packet
 	spinn_coord_t destination;
 	
@@ -35,6 +38,13 @@ typedef struct spinn_packet {
 	
 	// Emergency-routing state of the packet
 	spinn_emg_state_t emg_state;
+	
+	// Time at which the packet was sent
+	ticks_t sent_time;
+	
+	// Number of hops (of which are emergency legs)
+	ticks_t num_hops;
+	ticks_t num_emg_hops;
 	
 	// Packet payload
 	void *payload;
@@ -46,6 +56,8 @@ typedef struct spinn_packet {
  * to cause it to be dimension-order routed from the source to destination locations
  * in a system of the specified size. Also resets all other fields to the values
  * expected of a new packet.
+ *
+ * Note: Does not set the sent_time field.
  */
 void spinn_packet_init_dor( spinn_packet_t *packet
                           , spinn_coord_t   source

@@ -125,6 +125,11 @@ spinn_router_tock(void *r_)
 			p->direction = r->selected_output_direction;
 			p->emg_state = r->cur_packet_emg_state;
 			
+			// Update the counters
+			p->num_hops++;
+			if (p->emg_state == SPINN_EMG_FIRST_LEG)
+				p->num_emg_hops++;
+			
 			// Forward the current packet to the output
 			buffer_push(r->outputs[r->selected_output_direction], p);
 			

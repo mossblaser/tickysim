@@ -126,6 +126,15 @@ on_forward( spinn_router_t    *router
 	// Make sure the router is correct
 	ck_assert(&r == router);
 	
+	// Make sure the packet has been marked as completing one hop
+	ck_assert_int_eq(packet->num_hops, 1);
+	
+	// Make sure the number of emergency hops is correct
+	if (packet->emg_state == SPINN_EMG_FIRST_LEG)
+		ck_assert_int_eq(packet->num_emg_hops, 1);
+	else
+		ck_assert_int_eq(packet->num_emg_hops, 0);
+	
 	// Update the last_on_forward
 	last_on_forward.num_calls ++;
 	last_on_forward.time      = scheduler_get_ticks(&s);
@@ -206,9 +215,12 @@ START_TEST (test_single_normal_packet)
 	spinn_packet_t p;
 	p.inflection_point     = (spinn_coord_t){-1,-1};
 	p.inflection_direction = SPINN_NORTH;
+	p.source               = (spinn_coord_t){-1,-1};
 	p.destination          = (spinn_coord_t){-1,-1};
 	p.direction            = direction;
 	p.emg_state            = SPINN_EMG_NORMAL;
+	p.num_hops             = 0;
+	p.num_emg_hops         = 0;
 	p.payload              = NULL;
 	
 	buffer_push(&input, (void *)&p);
@@ -283,9 +295,12 @@ START_TEST (test_multiple_normal_packet)
 		for (int direction = 0; direction < 6; direction++) {
 			p->inflection_point     = (spinn_coord_t){-1,-1};
 			p->inflection_direction = SPINN_NORTH;
+			p->source               = (spinn_coord_t){-1,-1};
 			p->destination          = (spinn_coord_t){-1,-1};
 			p->direction            = (spinn_direction_t)direction;
 			p->emg_state            = SPINN_EMG_NORMAL;
+			p->num_hops             = 0;
+			p->num_emg_hops         = 0;
 			p->payload              = NULL;
 			
 			buffer_push(&input, (void *)p);
@@ -351,9 +366,12 @@ START_TEST (test_normal_packet_arrival)
 		for (int direction = 0; direction < 7; direction++) {
 			p->inflection_point     = (spinn_coord_t){-1,-1};
 			p->inflection_direction = SPINN_NORTH;
+			p->source               = (spinn_coord_t){-1,-1};
 			p->destination          = (spinn_coord_t){0,0};
 			p->direction            = (spinn_direction_t)direction;
 			p->emg_state            = emg_types[i];
+			p->num_hops             = 0;
+			p->num_emg_hops         = 0;
 			p->payload              = NULL;
 			
 			buffer_push(&input, (void *)p);
@@ -426,9 +444,12 @@ START_TEST (test_normal_packet_drop)
 		for (int direction = 0; direction < 7; direction++) {
 			p->inflection_point     = (spinn_coord_t){-1,-1};
 			p->inflection_direction = SPINN_NORTH;
+			p->source               = (spinn_coord_t){-1,-1};
 			p->destination          = (spinn_coord_t){0,0};
 			p->direction            = (spinn_direction_t)direction;
 			p->emg_state            = emg_types[i];
+			p->num_hops             = 0;
+			p->num_emg_hops         = 0;
 			p->payload              = NULL;
 			
 			buffer_push(&input, (void *)p);
@@ -494,9 +515,12 @@ START_TEST (test_emg_first_leg)
 	spinn_packet_t *p = packets;
 	p->inflection_point     = (spinn_coord_t){-1,-1};
 	p->inflection_direction = SPINN_NORTH;
+	p->source               = (spinn_coord_t){-1,-1};
 	p->destination          = (spinn_coord_t){-1,-1};
 	p->direction            = direction;
 	p->emg_state            = emg_type;
+	p->num_hops             = 0;
+	p->num_emg_hops         = 0;
 	p->payload              = NULL;
 	
 	buffer_push(&input, (void *)p);
@@ -548,9 +572,12 @@ START_TEST (test_emg_second_leg)
 	spinn_packet_t *p = packets;
 	p->inflection_point     = (spinn_coord_t){-1,-1};
 	p->inflection_direction = SPINN_NORTH;
+	p->source               = (spinn_coord_t){-1,-1};
 	p->destination          = (spinn_coord_t){-1,-1};
 	p->direction            = direction;
 	p->emg_state            = SPINN_EMG_FIRST_LEG;
+	p->num_hops             = 0;
+	p->num_emg_hops         = 0;
 	p->payload              = NULL;
 	
 	buffer_push(&input, (void *)p);
@@ -595,9 +622,12 @@ START_TEST (test_bubbles)
 	for (int i = 0; i < _i; i++) {
 		p->inflection_point     = (spinn_coord_t){-1,-1};
 		p->inflection_direction = SPINN_NORTH;
+		p->source               = (spinn_coord_t){-1,-1};
 		p->destination          = (spinn_coord_t){0,0};
 		p->direction            = SPINN_NORTH;
 		p->emg_state            = SPINN_EMG_NORMAL;
+		p->num_hops             = 0;
+		p->num_emg_hops         = 0;
 		p->payload              = NULL;
 		// Advance to the next packet
 		p++;

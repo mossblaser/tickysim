@@ -40,6 +40,9 @@ typedef enum spinn_packet_gen_dist {
 
 
 struct spinn_packet_gen {
+	// The scheduler which drives the packet generator 
+	scheduler_t *scheduler;
+	
 	// The buffer into which packets will be generated
 	buffer_t *buffer;
 	

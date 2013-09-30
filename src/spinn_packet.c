@@ -32,9 +32,12 @@ spinn_packet_init_dor( spinn_packet_t *p
                      )
 {
 	// Set the trivial fields
-	p->destination = destination;
-	p->emg_state   = SPINN_EMG_NORMAL;
-	p->payload     = payload;
+	p->source       = source;
+	p->destination  = destination;
+	p->emg_state    = SPINN_EMG_NORMAL;
+	p->payload      = payload;
+	p->num_hops     = 0;
+	p->num_emg_hops = 0;
 	
 	// Find the path between the src/dest
 	spinn_full_coord_t v = spinn_shortest_vector(source, destination, system_size);
@@ -216,6 +219,7 @@ spinn_packet_gen_tock(void *g_)
 	// Produce the packet
 	spinn_packet_t *p = spinn_packet_pool_palloc(g->pool);
 	spinn_packet_init_dor(p, g->position, destination, g->system_size, NULL);
+	p->sent_time = scheduler_get_ticks(g->scheduler);
 	
 	// Set up the payload and run the callback
 	if (g->on_packet_gen)
@@ -247,6 +251,7 @@ spinn_packet_gen_init_base( spinn_packet_gen_t *g
                           )
 {
 	// Set up data-structure fields
+	g->scheduler          = s;
 	g->buffer             = b;
 	g->pool               = pool;
 	g->position           = position;
