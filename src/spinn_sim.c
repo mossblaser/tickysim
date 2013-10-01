@@ -282,9 +282,9 @@ spinn_node_destroy(spinn_node_t *node)
  ******************************************************************************/
 
 void
-spinn_sim_init(spinn_sim_t *sim, const char *config_filename)
+spinn_sim_init(spinn_sim_t *sim, const char *config_filename, int argc, char *argv[])
 {
-	spinn_sim_config_init(sim, config_filename);
+	spinn_sim_config_init(sim, config_filename, argc, argv);
 	
 	scheduler_init(&(sim->scheduler));
 	spinn_packet_pool_init(&(sim->pool));

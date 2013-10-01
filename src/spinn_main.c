@@ -19,13 +19,13 @@
 int
 main(int argc, char *argv[])
 {
-	if (argc != 2) {
-		fprintf(stderr, "Usage: %s config_file\n", argv[0]);
+	if (argc < 2) {
+		fprintf(stderr, "Usage: %s config_file [key=value,...]\n", argv[0]);
 		return -1;
 	}
 	
 	spinn_sim_t sim;
-	spinn_sim_init(&sim, argv[1]);
+	spinn_sim_init(&sim, argv[1], argc - 2, argv+2);
 	spinn_sim_run(&sim);
 	spinn_sim_destroy(&sim);
 }

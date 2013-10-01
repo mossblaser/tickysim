@@ -8,6 +8,10 @@
 
 #include "config.h"
 
+#include <stdio.h>
+#include <string.h>
+#include <assert.h>
+
 #include <libconfig.h>
 
 #include "spinn_sim.h"
@@ -17,6 +21,8 @@
 void
 spinn_sim_config_init( spinn_sim_t *sim
                      , const char *filename
+                     , int         argc
+                     , char       *argv[]
                      )
 {
 	config_init(&(sim->config));
@@ -28,6 +34,56 @@ spinn_sim_config_init( spinn_sim_t *sim
 		       , config_error_text(&(sim->config))
 		       );
 		exit(-1);
+	}
+	
+	// Process override arguments
+	for (int i = 0; i < argc; i++) {
+		char *key = argv[i];
+		// The value comes after the '='. Make sure it is present!
+		char *value = index(argv[i], '=');
+		if (value == NULL) {
+			fprintf(stderr, "Invalid argument '%s'. Arguments must be of the form key=value!\n"
+			              , argv[i]
+			              );
+			exit(-1);
+		}
+		// Terminate the key part of the string and get the pointer to the value
+		// part.
+		value[0] = '\0';
+		value++;
+		
+		config_setting_t *setting = config_lookup(&(sim->config), key);
+		if (setting == NULL || !config_setting_is_scalar(setting)) {
+			fprintf(stderr, "Configuration key '%s' does not exist!\n", key);
+			exit(-1);
+		}
+		
+		// Parse and store the value
+		int type = config_setting_type(setting);
+		switch (type) {
+			case CONFIG_TYPE_INT:
+				assert(config_setting_set_int(setting, atoi(value)));
+				break;
+			case CONFIG_TYPE_INT64:
+				assert(config_setting_set_int64(setting, atol(value)));
+				break;
+			case CONFIG_TYPE_FLOAT:
+				assert(config_setting_set_float(setting, atof(value)));
+				break;
+			case CONFIG_TYPE_STRING:
+				assert(config_setting_set_string(setting, value));
+				break;
+			case CONFIG_TYPE_BOOL:
+				assert(config_setting_set_bool(setting, strcasecmp(value, "true") == 0));
+				break;
+			default:
+				fprintf(stderr, "Cannot override config key '%s' of type %d.\n"
+				              , key
+				              , type
+				              );
+				exit(-1);
+				break;
+		}
 	}
 }
 

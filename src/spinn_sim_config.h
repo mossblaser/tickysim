@@ -16,9 +16,14 @@
 /**
  * Open the config file. On error causes an exit(-1) and produces an error on
  * stderr.
+ *
+ * Also takes a set of arguments of the form "key=value" which can be used to
+ * override values given in the config file.
  */
 void spinn_sim_config_init( spinn_sim_t *sim
                           , const char  *filename
+                          , int          argc
+                          , char        *argv[]
                           );
 
 /**

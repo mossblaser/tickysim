@@ -114,8 +114,10 @@ struct spinn_sim {
 /**
  * Initialise a model for simulation based on the configuration stored in the
  * file named by config_filename.
+ *
+ * Also takes a set of arguments for the config file overrides.
  */
-void spinn_sim_init(spinn_sim_t *sim, const char *config_filename);
+void spinn_sim_init(spinn_sim_t *sim, const char *config_filename, int argc, char *argv[]);
 
 
 /**
