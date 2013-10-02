@@ -128,7 +128,7 @@ spinn_sim_stat_init_global_counters(spinn_sim_t *sim)
 		}
 		
 		// Add the header
-		fprintf(sim->stat_file_global_counters, "#repeat\tnum_cycles");
+		fprintf(sim->stat_file_global_counters, "repeat\tnum_cycles");
 		if (glbl_packets_offered)  fprintf(sim->stat_file_global_counters, "\tpackets_offered");
 		if (glbl_packets_accepted) fprintf(sim->stat_file_global_counters, "\tpackets_accepted");
 		if (glbl_packets_arrived)  fprintf(sim->stat_file_global_counters, "\tpackets_arrived");
@@ -175,7 +175,7 @@ spinn_sim_stat_init_per_node_counters(spinn_sim_t *sim)
 		}
 		
 		// Add the header
-		fprintf(sim->stat_file_per_node_counters, "#repeat\tnum_cycles\tnode_x\tnode_y");
+		fprintf(sim->stat_file_per_node_counters, "repeat\tnum_cycles\tnode_x\tnode_y");
 		if (per_node_packets_offered)  fprintf(sim->stat_file_per_node_counters, "\tpackets_offered");
 		if (per_node_packets_accepted) fprintf(sim->stat_file_per_node_counters, "\tpackets_accepted");
 		if (per_node_packets_arrived)  fprintf(sim->stat_file_per_node_counters, "\tpackets_arrived");
@@ -218,7 +218,7 @@ spinn_sim_stat_init_packet_details(spinn_sim_t *sim)
 		
 		// Add the header
 		fprintf(sim->stat_file_packet_details,
-		        "#repeat\tdelivered\t"
+		        "repeat\tdelivered\t"
 		        "source_x\tsource_y\tdest_x\tdest_y\t"
 		        "sent_time\tlatency\tnum_hops\temg_hops\n"
 		        );
