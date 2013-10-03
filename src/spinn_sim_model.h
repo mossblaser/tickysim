@@ -17,6 +17,12 @@ void spinn_sim_model_init(spinn_sim_t *sim);
 
 
 /**
+ * Update all parameters of the model which can be updated without destroying
+ * and re-initialising.
+ */
+void spinn_sim_model_update(spinn_sim_t *sim);
+
+/**
  * Clean up the system model.
  */
 void spinn_sim_model_destroy(spinn_sim_t *sim);

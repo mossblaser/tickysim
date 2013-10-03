@@ -46,6 +46,12 @@ void delay_init( delay_t     *d
                );
 
 
+/**
+ * Change the number of delay ticks.
+ */
+void delay_set_delay(delay_t *d, int delay);
+
+
 
 /**
  * Free the resources from an delay. Note that the scheduler this was registered

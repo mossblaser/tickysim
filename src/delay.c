@@ -51,6 +51,7 @@ delay_tick(void *d_)
 }
 
 
+
 /**
  * Internal function.
  *
@@ -92,6 +93,13 @@ delay_init( delay_t     *d
 	                  , delay_tick, (void *)d
 	                  , delay_tock, (void *)d
 	                  );
+}
+
+
+void
+delay_set_delay(delay_t *d, int delay)
+{
+	d->delay = delay;
 }
 
 

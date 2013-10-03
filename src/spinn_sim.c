@@ -109,6 +109,11 @@ spinn_sim_run(spinn_sim_t *sim)
 		// change e.g. the number of samples as an independent variable)
 		spinn_sim_config_set_exp_group(sim, sim->cur_group);
 		
+		// Update all parameters which can be set while the simulation is hot
+		if (model_initialised) {
+			spinn_sim_model_update(sim);
+		}
+		
 		bool cold_sample = spinn_sim_config_lookup_bool(sim, "experiment.cold_sample");
 		
 		int num_samples     = spinn_sim_config_lookup_int(sim, "experiment.num_samples");

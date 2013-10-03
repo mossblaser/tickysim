@@ -341,3 +341,29 @@ spinn_sim_model_destroy(spinn_sim_t *sim)
 	free(sim->nodes);
 }
 
+
+/******************************************************************************
+ * System-level hot-update
+ ******************************************************************************/
+
+void
+spinn_sim_model_update(spinn_sim_t *sim)
+{
+	for (int y = 0; y < sim->system_size.y; y++) {
+		for (int x = 0; x < sim->system_size.x; x++) {
+			spinn_node_t *node = &(sim->nodes[(y * sim->system_size.x) + x]);
+			// Change the packet generator probability
+			double gen_prob = spinn_sim_config_lookup_float(sim, "model.packet_generator.bernoulli_prob");
+			spinn_packet_gen_set_bernoulli_prob(&(node->packet_gen), gen_prob);
+			
+			// Change the packet consumer probability
+			double con_prob = spinn_sim_config_lookup_float(sim, "model.packet_consumer.bernoulli_prob");
+			spinn_packet_con_set_bernoulli_prob(&(node->packet_con), con_prob);
+			
+			// Change the node-to-node delays
+			int delay_ticks = spinn_sim_config_lookup_int(sim, "model.node_to_node_links.packet_delay");
+			for (int i = 0; i < 6; i++)
+				delay_set_delay(&(node->delays[i]), delay_ticks);
+		}
+	}
+}
