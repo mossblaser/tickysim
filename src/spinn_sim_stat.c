@@ -18,6 +18,63 @@
 
 
 
+
+/******************************************************************************
+ * Internal Standard-field Printing functions
+ ******************************************************************************/
+
+/**
+ * Print header columns (without terminating \t) for all common fields.
+ */
+void
+fprint_standard_fields_headers(spinn_sim_t *sim, FILE *file)
+{
+	// Standard, hard-coded simulation columns
+	fprintf(file, "group\tsample");
+	
+	// The independent variables
+	for (int i = 0; i < sim->num_ivars; i++)
+		fprintf(file, "\t%s", sim->ivar_names[i]);
+}
+
+
+/**
+ * Print columns (without terminating \t) for all common fields.
+ */
+void
+fprint_standard_fields(spinn_sim_t *sim, FILE *file)
+{
+	// Standard, hard-coded simulation columns
+	fprintf(file, "%d\t%d", sim->cur_group+1, sim->cur_sample+1);
+	
+	// The independent variables
+	for (int i = 0; i < sim->num_ivars; i++) {
+		config_setting_t *setting = sim->ivar_settings[i];
+		
+		switch (config_setting_type(setting)) {
+			case CONFIG_TYPE_INT:
+				fprintf(file, "\t%d", config_setting_get_int(setting));
+				break;
+			case CONFIG_TYPE_INT64:
+				fprintf(file, "\t%lld", config_setting_get_int64(setting));
+				break;
+			case CONFIG_TYPE_FLOAT:
+				fprintf(file, "\t%f", config_setting_get_float(setting));
+				break;
+			case CONFIG_TYPE_STRING:
+				fprintf(file, "\t%s", config_setting_get_string(setting));
+				break;
+			case CONFIG_TYPE_BOOL:
+				fprintf(file, "\t%s", config_setting_get_bool(setting) ? "True" : "False");
+				break;
+			default:
+				// Shouldn't have any other type of independent variable
+				assert(0);
+		}
+	}
+}
+
+
 /******************************************************************************
  * Callback functions
  ******************************************************************************/
@@ -31,17 +88,17 @@ spinn_sim_stat_log_packet( bool delivered
                          , spinn_node_t *node
                          )
 {
-	// Do nothing during warmup
-	if (node->sim->sample_num == -1)
+	// Do nothing when not sampling
+	if (!node->sim->stat_started)
 		return;
 	
+	fprint_standard_fields(node->sim, node->sim->stat_file_packet_details);
 	fprintf( node->sim->stat_file_packet_details
-	       , "%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n"
-	       , node->sim->sample_num + 1
+	       , "\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n"
 	       , delivered
 	       , packet->source.x,      packet->source.y
 	       , packet->destination.x, packet->destination.y
-	       , packet->sent_time
+	       , packet->sent_time - node->sim->stat_start_ticks
 	       , scheduler_get_ticks(&(node->sim->scheduler)) - packet->sent_time
 	       , packet->num_hops
 	       , packet->num_emg_hops
@@ -89,13 +146,12 @@ spinn_sim_stat_on_drop(spinn_router_t *router, spinn_packet_t *packet, void *nod
 }
 
 
-
 /******************************************************************************
  * Initialisation Functions
  ******************************************************************************/
 
 void
-spinn_sim_stat_init_global_counters(spinn_sim_t *sim)
+spinn_sim_stat_open_global_counters(spinn_sim_t *sim)
 {
 	const char *basename   = "global_counters.dat";
 	const char *result_dir = spinn_sim_config_lookup_string(sim, "measurements.results_directory");
@@ -128,7 +184,7 @@ spinn_sim_stat_init_global_counters(spinn_sim_t *sim)
 		}
 		
 		// Add the header
-		fprintf(sim->stat_file_global_counters, "sample\tnum_cycles");
+		fprint_standard_fields_headers(sim, sim->stat_file_global_counters);
 		if (glbl_packets_offered)  fprintf(sim->stat_file_global_counters, "\tpackets_offered");
 		if (glbl_packets_accepted) fprintf(sim->stat_file_global_counters, "\tpackets_accepted");
 		if (glbl_packets_arrived)  fprintf(sim->stat_file_global_counters, "\tpackets_arrived");
@@ -142,7 +198,7 @@ spinn_sim_stat_init_global_counters(spinn_sim_t *sim)
 
 
 void
-spinn_sim_stat_init_per_node_counters(spinn_sim_t *sim)
+spinn_sim_stat_open_per_node_counters(spinn_sim_t *sim)
 {
 	const char *basename   = "per_node_counters.dat";
 	const char *result_dir = spinn_sim_config_lookup_string(sim, "measurements.results_directory");
@@ -175,7 +231,8 @@ spinn_sim_stat_init_per_node_counters(spinn_sim_t *sim)
 		}
 		
 		// Add the header
-		fprintf(sim->stat_file_per_node_counters, "sample\tnum_cycles\tnode_x\tnode_y");
+		fprint_standard_fields_headers(sim, sim->stat_file_per_node_counters);
+		fprintf(sim->stat_file_per_node_counters, "\tnode_x\tnode_y");
 		if (per_node_packets_offered)  fprintf(sim->stat_file_per_node_counters, "\tpackets_offered");
 		if (per_node_packets_accepted) fprintf(sim->stat_file_per_node_counters, "\tpackets_accepted");
 		if (per_node_packets_arrived)  fprintf(sim->stat_file_per_node_counters, "\tpackets_arrived");
@@ -189,7 +246,7 @@ spinn_sim_stat_init_per_node_counters(spinn_sim_t *sim)
 
 
 void
-spinn_sim_stat_init_packet_details(spinn_sim_t *sim)
+spinn_sim_stat_open_packet_details(spinn_sim_t *sim)
 {
 	const char *basename   = "packet_details.dat";
 	const char *result_dir = spinn_sim_config_lookup_string(sim, "measurements.results_directory");
@@ -217,8 +274,9 @@ spinn_sim_stat_init_packet_details(spinn_sim_t *sim)
 		}
 		
 		// Add the header
+		fprint_standard_fields_headers(sim, sim->stat_file_packet_details);
 		fprintf(sim->stat_file_packet_details,
-		        "sample\tdelivered\t"
+		        "\tdelivered\t"
 		        "source_x\tsource_y\tdest_x\tdest_y\t"
 		        "sent_time\tlatency\tnum_hops\temg_hops\n"
 		        );
@@ -234,7 +292,7 @@ spinn_sim_stat_init_packet_details(spinn_sim_t *sim)
  ******************************************************************************/
 
 void
-spinn_sim_stat_destroy_global_counters(spinn_sim_t *sim)
+spinn_sim_stat_close_global_counters(spinn_sim_t *sim)
 {
 	if (sim->stat_file_global_counters != NULL)
 		if (fclose(sim->stat_file_global_counters) != 0)
@@ -243,7 +301,7 @@ spinn_sim_stat_destroy_global_counters(spinn_sim_t *sim)
 
 
 void
-spinn_sim_stat_destroy_per_node_counters(spinn_sim_t *sim)
+spinn_sim_stat_close_per_node_counters(spinn_sim_t *sim)
 {
 	if (sim->stat_file_per_node_counters != NULL)
 		if (fclose(sim->stat_file_per_node_counters) != 0)
@@ -252,7 +310,7 @@ spinn_sim_stat_destroy_per_node_counters(spinn_sim_t *sim)
 
 
 void
-spinn_sim_stat_destroy_packet_details(spinn_sim_t *sim)
+spinn_sim_stat_close_packet_details(spinn_sim_t *sim)
 {
 	if (sim->stat_file_packet_details != NULL)
 		if (fclose(sim->stat_file_packet_details) != 0)
@@ -265,14 +323,14 @@ spinn_sim_stat_destroy_packet_details(spinn_sim_t *sim)
  ******************************************************************************/
 
 void
-spinn_sim_stat_start_global_counters(spinn_sim_t *sim)
+spinn_sim_stat_start_sample_global_counters(spinn_sim_t *sim)
 {
 	// Nothing to do (all counters are those from the per-node counters)
 }
 
 
 void
-spinn_sim_stat_start_per_node_counters(spinn_sim_t *sim)
+spinn_sim_stat_start_sample_per_node_counters(spinn_sim_t *sim)
 {
 	// Reset all counters
 	for (size_t i = 0; i < sim->system_size.x*sim->system_size.y; i++) {
@@ -285,7 +343,7 @@ spinn_sim_stat_start_per_node_counters(spinn_sim_t *sim)
 
 
 void
-spinn_sim_stat_start_packet_details(spinn_sim_t *sim)
+spinn_sim_stat_start_sample_packet_details(spinn_sim_t *sim)
 {
 	// Nothing to do
 }
@@ -296,7 +354,7 @@ spinn_sim_stat_start_packet_details(spinn_sim_t *sim)
  ******************************************************************************/
 
 void
-spinn_sim_stat_end_global_counters(spinn_sim_t *sim)
+spinn_sim_stat_end_sample_global_counters(spinn_sim_t *sim)
 {
 	// What global stats are being counted?
 	bool glbl_packets_offered = spinn_sim_config_lookup_bool(sim,
@@ -324,12 +382,7 @@ spinn_sim_stat_end_global_counters(spinn_sim_t *sim)
 			stat_packets_dropped  += sim->nodes[i].stat_packets_dropped;
 		}
 	
-		// Add the header
-		fprintf(sim->stat_file_global_counters, "%d\t%d"
-		       , sim->sample_num + 1
-		       , spinn_sim_config_lookup_int(sim, "simulation.sample_duration")
-		       );
-		
+		fprint_standard_fields(sim, sim->stat_file_global_counters);
 		if (glbl_packets_offered)
 			fprintf(sim->stat_file_global_counters, "\t%d", stat_packets_offered);
 		if (glbl_packets_accepted)
@@ -345,7 +398,7 @@ spinn_sim_stat_end_global_counters(spinn_sim_t *sim)
 
 
 void
-spinn_sim_stat_end_per_node_counters(spinn_sim_t *sim)
+spinn_sim_stat_end_sample_per_node_counters(spinn_sim_t *sim)
 {
 	// What per-node stats are being counted?
 	bool per_node_packets_offered = spinn_sim_config_lookup_bool(sim,
@@ -364,10 +417,8 @@ spinn_sim_stat_end_per_node_counters(spinn_sim_t *sim)
 		// Iterate over all nodes
 		for (int y = 0; y < sim->system_size.y; y++) {
 			for (int x = 0; x < sim->system_size.x; x++) {
-				// Add the header
-				fprintf(sim->stat_file_per_node_counters, "%d\t%d\t%d\t%d"
-				       , sim->sample_num + 1
-				       , spinn_sim_config_lookup_int(sim, "simulation.sample_duration")
+				fprint_standard_fields(sim, sim->stat_file_per_node_counters);
+				fprintf(sim->stat_file_per_node_counters, "\t%d\t%d"
 				       , x, y
 				       );
 				
@@ -390,7 +441,7 @@ spinn_sim_stat_end_per_node_counters(spinn_sim_t *sim)
 
 
 void
-spinn_sim_stat_end_packet_details(spinn_sim_t *sim)
+spinn_sim_stat_end_sample_packet_details(spinn_sim_t *sim)
 {
 	// Nothing to do
 }
@@ -402,37 +453,44 @@ spinn_sim_stat_end_packet_details(spinn_sim_t *sim)
  ******************************************************************************/
 
 void
-spinn_sim_stat_init(spinn_sim_t *sim)
+spinn_sim_stat_open(spinn_sim_t *sim)
 {
-	spinn_sim_stat_init_global_counters(sim);
-	spinn_sim_stat_init_per_node_counters(sim);
-	spinn_sim_stat_init_packet_details(sim);
+	sim->stat_started = false;
+	
+	spinn_sim_stat_open_global_counters(sim);
+	spinn_sim_stat_open_per_node_counters(sim);
+	spinn_sim_stat_open_packet_details(sim);
 }
 
 
 void
-spinn_sim_stat_destroy(spinn_sim_t *sim)
+spinn_sim_stat_close(spinn_sim_t *sim)
 {
-	spinn_sim_stat_destroy_global_counters(sim);
-	spinn_sim_stat_destroy_per_node_counters(sim);
-	spinn_sim_stat_destroy_packet_details(sim);
+	spinn_sim_stat_close_global_counters(sim);
+	spinn_sim_stat_close_per_node_counters(sim);
+	spinn_sim_stat_close_packet_details(sim);
 }
 
 
 void
-spinn_sim_stat_start(spinn_sim_t *sim)
+spinn_sim_stat_start_sample(spinn_sim_t *sim)
 {
-	spinn_sim_stat_start_global_counters(sim);
-	spinn_sim_stat_start_per_node_counters(sim);
-	spinn_sim_stat_start_packet_details(sim);
+	sim->stat_started = true;
+	sim->stat_start_ticks = scheduler_get_ticks(&(sim->scheduler));
+	
+	spinn_sim_stat_start_sample_global_counters(sim);
+	spinn_sim_stat_start_sample_per_node_counters(sim);
+	spinn_sim_stat_start_sample_packet_details(sim);
 }
 
 
 void
-spinn_sim_stat_end(spinn_sim_t *sim)
+spinn_sim_stat_end_sample(spinn_sim_t *sim)
 {
-	spinn_sim_stat_end_global_counters(sim);
-	spinn_sim_stat_end_per_node_counters(sim);
-	spinn_sim_stat_end_packet_details(sim);
+	sim->stat_started = false;
+	
+	spinn_sim_stat_end_sample_global_counters(sim);
+	spinn_sim_stat_end_sample_per_node_counters(sim);
+	spinn_sim_stat_end_sample_packet_details(sim);
 }
 

@@ -109,8 +109,22 @@ struct spinn_sim {
 	bool stat_log_delivered_packets;
 	bool stat_log_dropped_packets;
 	
-	// The sample number currently in progress. -1 if warmup in progress
-	int sample_num;
+	// The time of the scheduler when the result collection started
+	ticks_t stat_start_ticks;
+	
+	// Is the stat recording process running
+	bool stat_started;
+	
+	// The experemental group currently being run
+	int cur_group;
+	
+	// The sample currently being run
+	int cur_sample;
+	
+	// The independent variables (and their names)
+	int                num_ivars;
+	config_setting_t **ivar_settings;
+	char        const**ivar_names;
 };
 
 

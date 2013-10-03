@@ -19,6 +19,7 @@ tickysim_spinnaker_SOURCES += spinn_packet.c spinn_packet.h spinn_packet_interna
 tickysim_spinnaker_SOURCES += spinn_router.c spinn_router.h spinn_router_internal.h
 
 tickysim_spinnaker_SOURCES += spinn_sim.c spinn_sim.h
+tickysim_spinnaker_SOURCES += spinn_sim_model.c spinn_sim_model.h
 tickysim_spinnaker_SOURCES += spinn_sim_config.c spinn_sim_config.h
 tickysim_spinnaker_SOURCES += spinn_sim_stat.c spinn_sim_stat.h
 

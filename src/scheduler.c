@@ -101,6 +101,8 @@ scheduler_schedule( scheduler_t *s
                   , void *tock_data
                   )
 {
+	assert(period > 0);
+	
 	// Get the schedule for this period
 	schedule_t *schedule = get_schedule(s, period);
 	

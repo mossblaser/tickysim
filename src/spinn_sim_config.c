@@ -18,6 +18,72 @@
 #include "spinn_sim_config.h"
 
 
+/******************************************************************************
+ * Internal: Experiment paramter processing
+ ******************************************************************************/
+
+/**
+ * Set up the list of independent variables in the experiment.
+ */
+void
+spinn_sim_config_init_independent_variables(spinn_sim_t *sim)
+{
+	// Get the list of variables
+	config_setting_t *ivar_list = config_lookup(&(sim->config), "experiment.independent_variables");
+	if (ivar_list == NULL || config_setting_type(ivar_list) != CONFIG_TYPE_LIST) {
+		fprintf(stderr, "Expected a list of independent variables in 'experiment.independent_variables'.\n");
+		exit(-1);
+	}
+	sim->num_ivars = config_setting_length(ivar_list);
+	
+	// Create the lists of settings and names
+	sim->ivar_settings = calloc(sim->num_ivars, sizeof(config_setting_t *));
+	sim->ivar_names    = calloc(sim->num_ivars, sizeof(const char *));
+	
+	for (int i = 0; i < sim->num_ivars; i++) {
+		// Get the key/value pair
+		config_setting_t *key_name_list = config_setting_get_elem(ivar_list, i);
+		if (key_name_list == NULL
+		    || config_setting_type(key_name_list) != CONFIG_TYPE_LIST
+		    || config_setting_length(key_name_list) != 2
+		    || config_setting_type(config_setting_get_elem(key_name_list, 0)) != CONFIG_TYPE_STRING
+		    || config_setting_type(config_setting_get_elem(key_name_list, 1)) != CONFIG_TYPE_STRING
+		   ) {
+			fprintf(stderr, "Expected 'experiment.independent_variables'"
+			                " to contain a list of (key,name) string pairs.\n");
+			exit(-1);
+		}
+		const char *key  = config_setting_get_string_elem(key_name_list, 0);
+		const char *name = config_setting_get_string_elem(key_name_list, 1);
+		
+		// Check that the variable exists
+		config_setting_t *ivar_setting = config_lookup(&(sim->config), key);
+		if (ivar_setting == NULL) {
+			fprintf(stderr, "Independant variable '%s' (%s) not found.\n", key, name);
+			exit(-1);
+		}
+		
+		// Add it to the list
+		sim->ivar_settings[i] = ivar_setting;
+		sim->ivar_names[i]    = name;
+	}
+}
+
+/**
+ * Free up the list of independent variables in the experiment.
+ */
+void
+spinn_sim_config_destroy_independent_variables(spinn_sim_t *sim)
+{
+	free(sim->ivar_settings);
+	free(sim->ivar_names);
+}
+
+/******************************************************************************
+ * libconfig convenience wrappers
+ ******************************************************************************/
+
+
 void
 spinn_sim_config_init( spinn_sim_t *sim
                      , const char *filename
@@ -85,11 +151,15 @@ spinn_sim_config_init( spinn_sim_t *sim
 				break;
 		}
 	}
+	
+	// Load the experiment parameters
+	spinn_sim_config_init_independent_variables(sim);
 }
 
 void
 spinn_sim_config_destroy(spinn_sim_t *sim)
 {
+	spinn_sim_config_destroy_independent_variables(sim);
 	config_destroy(&(sim->config));
 }
 
@@ -161,3 +231,96 @@ DEFINE_CONFIG_WRAPPER( spinn_sim_config_lookup_string
                      , config_lookup_string
                      , const char *
                      )
+
+
+
+/******************************************************************************
+ * Experement independent variable utility functions
+ ******************************************************************************/
+
+
+int
+spinn_sim_config_get_num_exp_groups(spinn_sim_t *sim)
+{
+	// Get the list of groups
+	config_setting_t *group_list = config_lookup(&(sim->config), "experiment.groups");
+	if (group_list == NULL || config_setting_type(group_list) != CONFIG_TYPE_LIST) {
+		fprintf(stderr, "Expected a list of groups in 'experiment.groups'.\n");
+		exit(-1);
+	}
+	
+	int num_groups = config_setting_length(group_list);
+	if (num_groups < 1) {
+		fprintf(stderr, "Experiments must have at least one group.\n");
+		exit(-1);
+	}
+	
+	return num_groups;
+}
+
+
+void
+spinn_sim_config_set_exp_group(spinn_sim_t *sim, int group_num)
+{
+	// Get the list of groups
+	config_setting_t *group_list = config_lookup(&(sim->config), "experiment.groups");
+	if (group_list == NULL || config_setting_type(group_list) != CONFIG_TYPE_LIST) {
+		fprintf(stderr, "Expected a list of groups in 'experiment.groups'.\n");
+		exit(-1);
+	}
+	
+	// Get the group we care about
+	config_setting_t *group = config_setting_get_elem(group_list, group_num);
+	assert(group != NULL);
+	
+	// Make sure it has the correct number of elements
+	if (config_setting_length(group) != sim->num_ivars) {
+		fprintf(stderr, "Expected group %d to contain exactly %d variable%s.\n"
+		              , group_num + 1
+		              , sim->num_ivars
+		              , (sim->num_ivars == 1) ? "" : "s"
+		              );
+		exit(-1);
+	}
+	
+	// Set each variable in turn
+	for (int i = 0; i < sim->num_ivars; i++) {
+		config_setting_t *ivar      = sim->ivar_settings[i];
+		const char       *ivar_name = sim->ivar_names[i];
+		config_setting_t *value     = config_setting_get_elem(group, i);
+		
+		// Check types match
+		if (config_setting_type(ivar) != config_setting_type(value)) {
+			fprintf(stderr, "Expected value %d (%s) of group %d to match type of the independent variable.\n"
+			              , i + 1
+			              , ivar_name
+			              , group_num + 1
+			              );
+			exit(-1);
+		}
+		
+		// Move the value accross
+		switch(config_setting_type(ivar)) {
+			case CONFIG_TYPE_INT:
+				config_setting_set_int(ivar, config_setting_get_int(value));
+				break;
+			case CONFIG_TYPE_INT64:
+				config_setting_set_int64(ivar, config_setting_get_int64(value));
+				break;
+			case CONFIG_TYPE_FLOAT:
+				config_setting_set_float(ivar, config_setting_get_float(value));
+				break;
+			case CONFIG_TYPE_STRING:
+				config_setting_set_string(ivar, config_setting_get_string(value));
+				break;
+			case CONFIG_TYPE_BOOL:
+				config_setting_set_bool(ivar, config_setting_get_bool(value));
+				break;
+			default:
+				fprintf(stderr, "Setting is of an unsupported type %d for an independent variable.\n"
+				              , config_setting_type(ivar)
+				              );
+				exit(-1);
+		}
+	}
+}

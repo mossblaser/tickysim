@@ -12,7 +12,6 @@
 
 #include "spinn_sim.h"
 
-
 /**
  * Open the config file. On error causes an exit(-1) and produces an error on
  * stderr.
@@ -75,5 +74,16 @@ DEFINE_CONFIG_WRAPPER( spinn_sim_config_lookup_string
                      )
 
 #undef DEFINE_CONFIG_WRAPPER
+
+
+/**
+ * Get the number of experimental groups.
+ */
+int spinn_sim_config_get_num_exp_groups(spinn_sim_t *sim);
+
+/**
+ * Set the config values to those specified by the given group number.
+ */
+void spinn_sim_config_set_exp_group(spinn_sim_t *sim, int group_num);
 
 #endif
