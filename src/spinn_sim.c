@@ -345,7 +345,7 @@ spinn_sim_run(spinn_sim_t *sim)
 	fprintf(stderr, "Warmup starting...\n");
 	
 	// Warmup
-	sim->repeat_num = -1;
+	sim->sample_num = -1;
 	for (ticks_t t = 0; t < warmup_duration; t++) {
 		scheduler_tick_tock(&(sim->scheduler));
 		
@@ -362,11 +362,11 @@ spinn_sim_run(spinn_sim_t *sim)
 	}
 	
 	// Take samples
-	for (sim->repeat_num = 0; sim->repeat_num < num_samples; sim->repeat_num++) {
+	for (sim->sample_num = 0; sim->sample_num < num_samples; sim->sample_num++) {
 		spinn_sim_stat_start(sim);
 		
 		fprintf(stderr, "\nSample %2d/%2d starting...\n"
-		              , sim->repeat_num+1, num_samples
+		              , sim->sample_num+1, num_samples
 		              );
 		
 		// Run the sample
@@ -376,7 +376,7 @@ spinn_sim_run(spinn_sim_t *sim)
 			time_t now = time(NULL);
 			if (last_debug != now) {
 				fprintf(stderr, "Sample %2d/%2d: %3d%% (%7d/%7d, %d ticks/s)\n"
-				              , sim->repeat_num+1, num_samples
+				              , sim->sample_num+1, num_samples
 				              , (t*100) / warmup_duration
 				              , t, warmup_duration
 			                , scheduler_get_ticks(&(sim->scheduler)) - last_num_ticks

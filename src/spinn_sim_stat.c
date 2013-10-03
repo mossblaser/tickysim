@@ -32,12 +32,12 @@ spinn_sim_stat_log_packet( bool delivered
                          )
 {
 	// Do nothing during warmup
-	if (node->sim->repeat_num == -1)
+	if (node->sim->sample_num == -1)
 		return;
 	
 	fprintf( node->sim->stat_file_packet_details
 	       , "%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n"
-	       , node->sim->repeat_num + 1
+	       , node->sim->sample_num + 1
 	       , delivered
 	       , packet->source.x,      packet->source.y
 	       , packet->destination.x, packet->destination.y
@@ -128,7 +128,7 @@ spinn_sim_stat_init_global_counters(spinn_sim_t *sim)
 		}
 		
 		// Add the header
-		fprintf(sim->stat_file_global_counters, "repeat\tnum_cycles");
+		fprintf(sim->stat_file_global_counters, "sample\tnum_cycles");
 		if (glbl_packets_offered)  fprintf(sim->stat_file_global_counters, "\tpackets_offered");
 		if (glbl_packets_accepted) fprintf(sim->stat_file_global_counters, "\tpackets_accepted");
 		if (glbl_packets_arrived)  fprintf(sim->stat_file_global_counters, "\tpackets_arrived");
@@ -175,7 +175,7 @@ spinn_sim_stat_init_per_node_counters(spinn_sim_t *sim)
 		}
 		
 		// Add the header
-		fprintf(sim->stat_file_per_node_counters, "repeat\tnum_cycles\tnode_x\tnode_y");
+		fprintf(sim->stat_file_per_node_counters, "sample\tnum_cycles\tnode_x\tnode_y");
 		if (per_node_packets_offered)  fprintf(sim->stat_file_per_node_counters, "\tpackets_offered");
 		if (per_node_packets_accepted) fprintf(sim->stat_file_per_node_counters, "\tpackets_accepted");
 		if (per_node_packets_arrived)  fprintf(sim->stat_file_per_node_counters, "\tpackets_arrived");
@@ -218,7 +218,7 @@ spinn_sim_stat_init_packet_details(spinn_sim_t *sim)
 		
 		// Add the header
 		fprintf(sim->stat_file_packet_details,
-		        "repeat\tdelivered\t"
+		        "sample\tdelivered\t"
 		        "source_x\tsource_y\tdest_x\tdest_y\t"
 		        "sent_time\tlatency\tnum_hops\temg_hops\n"
 		        );
@@ -326,7 +326,7 @@ spinn_sim_stat_end_global_counters(spinn_sim_t *sim)
 	
 		// Add the header
 		fprintf(sim->stat_file_global_counters, "%d\t%d"
-		       , sim->repeat_num + 1
+		       , sim->sample_num + 1
 		       , spinn_sim_config_lookup_int(sim, "simulation.sample_duration")
 		       );
 		
@@ -366,7 +366,7 @@ spinn_sim_stat_end_per_node_counters(spinn_sim_t *sim)
 			for (int x = 0; x < sim->system_size.x; x++) {
 				// Add the header
 				fprintf(sim->stat_file_per_node_counters, "%d\t%d\t%d\t%d"
-				       , sim->repeat_num + 1
+				       , sim->sample_num + 1
 				       , spinn_sim_config_lookup_int(sim, "simulation.sample_duration")
 				       , x, y
 				       );

@@ -109,8 +109,8 @@ struct spinn_sim {
 	bool stat_log_delivered_packets;
 	bool stat_log_dropped_packets;
 	
-	// The repeat number currently in progress. -1 if warmup in progress
-	int repeat_num;
+	// The sample number currently in progress. -1 if warmup in progress
+	int sample_num;
 };
 
 
