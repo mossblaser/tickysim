@@ -52,12 +52,16 @@ struct spinn_node {
 	
 	// Buffers on either side of a delay model which (eventually, via some
 	// arbiters) connect to the inputs of the router
-	buffer_t front_inputs[7];
-	buffer_t back_inputs[7];
-	delay_t node_to_node_delay[7];
+	buffer_t input_buffers[6];
+	buffer_t output_buffers[6];
 	
-	// Buffer which represents the local core
-	buffer_t local_out;
+	// Delay element which connects each output to an input of a surrounding node
+	// (connected up by spinn_sim_init).
+	delay_t delays[6];
+	
+	// Packet generator/consumer buffers
+	buffer_t gen_buffer;
+	buffer_t con_buffer;
 	
 	// Buffers in the arbiter tree
 	buffer_t arb_n_s_out;

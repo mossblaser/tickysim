@@ -38,28 +38,19 @@ spinn_node_init( spinn_sim_t   *sim
 	
 	node->position = position;
 	
-	// Create node-to-node links as:
-	//     ,--------------,   ,-------,   ,-------------,
-	//  -->| Front Buffer |-->| Delay |-->| Back Buffer |-->
-	//     '--------------'   '-------'   '-------------'
-	int front_input_buffer_length = spinn_sim_config_lookup_int(sim, "model.node_to_node_links.front_buffer_length");
-	int back_input_buffer_length = spinn_sim_config_lookup_int(sim, "model.node_to_node_links.back_buffer_length");
-	int delay = spinn_sim_config_lookup_int(sim, "model.node_to_node_links.packet_delay");
-	for (int i = 0; i < 7; i++) {
-		buffer_init(&(node->front_inputs[i]), front_input_buffer_length);
-		buffer_init(&(node->back_inputs[i]), back_input_buffer_length);
-		delay_init( &(node->node_to_node_delay[i])
-		          , &(sim->scheduler)
-		          , 1
-		          , delay
-		          , &(node->front_inputs[i])
-		          , &(node->back_inputs[i])
-		          );
+	// Create node-to-node link buffers
+	int input_buffer_length = spinn_sim_config_lookup_int(sim, "model.node_to_node_links.input_buffer_length");
+	int output_buffer_length = spinn_sim_config_lookup_int(sim, "model.node_to_node_links.output_buffer_length");
+	for (int i = 0; i < 6; i++) {
+		buffer_init(&(node->input_buffers[i]), input_buffer_length);
+		buffer_init(&(node->output_buffers[i]), output_buffer_length);
 	}
 	
-	// Create buffer for the local link
-	int local_buffer_length = spinn_sim_config_lookup_int(sim, "model.packet_consumer.buffer_length");
-	buffer_init(&(node->local_out), local_buffer_length);
+	// Create buffer for the local gen/con links
+	int gen_buffer_length = spinn_sim_config_lookup_int(sim, "model.packet_generator.buffer_length");
+	int con_buffer_length = spinn_sim_config_lookup_int(sim, "model.packet_consumer.buffer_length");
+	buffer_init(&(node->gen_buffer), gen_buffer_length);
+	buffer_init(&(node->con_buffer), con_buffer_length);
 	
 	// Create buffers for the arbiter tree
 	int root_buffer_length = spinn_sim_config_lookup_int(sim, "model.arbiter_tree.root.buffer_length");
@@ -98,6 +89,7 @@ spinn_node_init( spinn_sim_t   *sim
 	int lvl1_period = spinn_sim_config_lookup_int(sim, "model.arbiter_tree.lvl1.period");
 	int lvl2_period = spinn_sim_config_lookup_int(sim, "model.arbiter_tree.lvl2.period");
 	
+	// Root
 	buffer_t *arb_last_inputs[] = { &(node->arb_n_s_e_w_out) 
 	                              , &(node->arb_ne_sw_l_out)
 	                              };
@@ -108,6 +100,7 @@ spinn_node_init( spinn_sim_t   *sim
 	            , &(node->arb_last_out)
 	            );
 	
+	// Lvl 1
 	buffer_t *arb_n_s_e_w_inputs[] = { &(node->arb_n_s_out) 
 	                                 , &(node->arb_e_w_out)
 	                                 };
@@ -119,7 +112,7 @@ spinn_node_init( spinn_sim_t   *sim
 	            );
 	
 	buffer_t *arb_ne_sw_l_inputs[] = { &(node->arb_ne_sw_out) 
-	                                 , &(node->back_inputs[SPINN_LOCAL])
+	                                 , &(node->gen_buffer)
 	                                 };
 	arbiter_init( &(node->arb_ne_sw_l)
 	            , &(sim->scheduler)
@@ -128,8 +121,9 @@ spinn_node_init( spinn_sim_t   *sim
 	            , &(node->arb_ne_sw_l_out)
 	            );
 	
-	buffer_t *arb_n_s_inputs[] = { &(node->back_inputs[SPINN_NORTH]) 
-	                             , &(node->back_inputs[SPINN_SOUTH])
+	// Lvl 2
+	buffer_t *arb_n_s_inputs[] = { &(node->input_buffers[SPINN_NORTH]) 
+	                             , &(node->input_buffers[SPINN_SOUTH])
 	                             };
 	arbiter_init( &(node->arb_n_s)
 	            , &(sim->scheduler)
@@ -138,8 +132,8 @@ spinn_node_init( spinn_sim_t   *sim
 	            , &(node->arb_n_s_out)
 	            );
 	
-	buffer_t *arb_e_w_inputs[] = { &(node->back_inputs[SPINN_EAST]) 
-	                             , &(node->back_inputs[SPINN_WEST])
+	buffer_t *arb_e_w_inputs[] = { &(node->input_buffers[SPINN_EAST]) 
+	                             , &(node->input_buffers[SPINN_WEST])
 	                             };
 	arbiter_init( &(node->arb_e_w)
 	            , &(sim->scheduler)
@@ -148,8 +142,8 @@ spinn_node_init( spinn_sim_t   *sim
 	            , &(node->arb_e_w_out)
 	            );
 	
-	buffer_t *arb_ne_sw_inputs[] = { &(node->back_inputs[SPINN_NORTH_EAST]) 
-	                               , &(node->back_inputs[SPINN_SOUTH_WEST])
+	buffer_t *arb_ne_sw_inputs[] = { &(node->input_buffers[SPINN_NORTH_EAST]) 
+	                               , &(node->input_buffers[SPINN_SOUTH_WEST])
 	                               };
 	arbiter_init( &(node->arb_ne_sw)
 	            , &(sim->scheduler)
@@ -166,7 +160,7 @@ spinn_node_init( spinn_sim_t   *sim
 	if (strcmp(gen_cyclic, "cyclic") == 0) {
 		spinn_packet_gen_cyclic_init( &(node->packet_gen)
 		                            , &(sim->scheduler)
-		                            , &(node->front_inputs[SPINN_LOCAL])
+		                            , &(node->gen_buffer)
 		                            , &(sim->pool)
 		                            , node->position
 		                            , sim->system_size
@@ -177,7 +171,7 @@ spinn_node_init( spinn_sim_t   *sim
 	} else if (strcmp(gen_cyclic, "uniform") == 0) {
 		spinn_packet_gen_uniform_init( &(node->packet_gen)
 		                             , &(sim->scheduler)
-		                             , &(node->front_inputs[SPINN_LOCAL])
+		                             , &(node->gen_buffer)
 		                             , &(sim->pool)
 		                             , node->position
 		                             , sim->system_size
@@ -195,7 +189,7 @@ spinn_node_init( spinn_sim_t   *sim
 	double con_prob = spinn_sim_config_lookup_float(sim, "model.packet_consumer.bernoulli_prob");
 	spinn_packet_con_init( &(node->packet_con)
 	                     , &(sim->scheduler)
-	                     , &(node->local_out)
+	                     , &(node->con_buffer)
 	                     , &(sim->pool)
 	                     , con_period
 	                     , con_prob
@@ -203,27 +197,11 @@ spinn_node_init( spinn_sim_t   *sim
 	                     );
 	
 	// Get a pointer to each of the output buffers
-	buffer_t *output_buffers[7] = {0};
-	spinn_direction_t directions[] = {
-		SPINN_EAST,
-		SPINN_NORTH_EAST,
-		SPINN_NORTH,
-		SPINN_WEST,
-		SPINN_SOUTH_WEST,
-		SPINN_SOUTH,
-	};
+	buffer_t *output_buffers[7];
 	for (int i = 0; i < 6; i++) {
-		spinn_coord_t delta = spinn_dir_to_vector(directions[i]);
-		spinn_coord_t neighbour_pos;
-		neighbour_pos.x = (position.x + delta.x + sim->system_size.x)
-		                  % sim->system_size.x;
-		neighbour_pos.y = (position.y + delta.y + sim->system_size.y)
-		                  % sim->system_size.y;
-		spinn_node_t *neighbour = &(sim->nodes[(neighbour_pos.y * sim->system_size.x)
-		                                       + neighbour_pos.x]);
-		output_buffers[i] = &(neighbour->front_inputs[spinn_opposite(directions[i])]);
+		output_buffers[i] = &(node->output_buffers[i]);
 	}
-	output_buffers[SPINN_LOCAL] = &(node->local_out);
+	output_buffers[SPINN_LOCAL] = &(node->con_buffer);
 	
 	// Set up the router
 	int router_period = spinn_sim_config_lookup_int(sim, "model.router.period");
@@ -262,12 +240,12 @@ spinn_node_destroy(spinn_node_t *node)
 	arbiter_destroy(&(node->arb_ne_sw_l));
 	arbiter_destroy(&(node->arb_last));
 	
-	for (int i = 0; i < 7; i++) {
-		buffer_destroy(&(node->front_inputs[i]));
-		buffer_destroy(&(node->back_inputs[i]));
-		delay_destroy(&(node->node_to_node_delay[i]));
+	for (int i = 0; i < 6; i++) {
+		buffer_destroy(&(node->input_buffers[i]));
+		buffer_destroy(&(node->output_buffers[i]));
 	}
-	buffer_destroy(&(node->local_out));
+	buffer_destroy(&(node->gen_buffer));
+	buffer_destroy(&(node->con_buffer));
 	buffer_destroy(&(node->arb_n_s_out));
 	buffer_destroy(&(node->arb_e_w_out));
 	buffer_destroy(&(node->arb_ne_sw_out));
@@ -302,6 +280,47 @@ spinn_sim_init(spinn_sim_t *sim, const char *config_filename, int argc, char *ar
 		for (int x = 0; x < sim->system_size.x; x++) {
 			int i = (y * sim->system_size.x) + x;
 			spinn_node_init(sim, &(sim->nodes[i]), (spinn_coord_t){x,y});
+		}
+	}
+	
+	// Wire-up the nodes with delays
+	int delay_ticks = spinn_sim_config_lookup_int(sim, "model.node_to_node_links.packet_delay");
+	for (int y = 0; y < sim->system_size.y; y++) {
+		for (int x = 0; x < sim->system_size.x; x++) {
+			spinn_node_t *node = &(sim->nodes[(y * sim->system_size.x) + x]);
+			
+			spinn_direction_t directions[] = {
+			        SPINN_EAST,
+			        SPINN_NORTH_EAST,
+			        SPINN_NORTH,
+			        SPINN_WEST,
+			        SPINN_SOUTH_WEST,
+			        SPINN_SOUTH,
+			};
+			for (int i = 0; i < 6; i++) {
+				// Find the node in this direction
+				spinn_coord_t delta = spinn_dir_to_vector(directions[i]);
+				spinn_coord_t neighbour_pos;
+				neighbour_pos.x = (x + delta.x + sim->system_size.x)
+				                  % sim->system_size.x;
+				neighbour_pos.y = (y + delta.y + sim->system_size.y)
+				                  % sim->system_size.y;
+				spinn_node_t *neighbour = &(sim->nodes[(neighbour_pos.y * sim->system_size.x)
+				                                       + neighbour_pos.x]);
+				
+				// Find the input connected to this node's output
+				buffer_t *input_buffer = &(neighbour->input_buffers[spinn_opposite(directions[i])]);
+				buffer_t *output_buffer = &(node->output_buffers[i]);
+				
+				// Set up the delay
+				delay_init( &(node->delays[i])
+				          , &(sim->scheduler)
+				          , 1
+				          , delay_ticks
+				          , output_buffer
+				          , input_buffer
+				          );
+			}
 		}
 	}
 	
@@ -382,8 +401,11 @@ spinn_sim_destroy(spinn_sim_t *sim)
 	scheduler_destroy(&(sim->scheduler));
 	spinn_packet_pool_destroy(&(sim->pool));
 	
-	for (int i = 0; i < sim->system_size.x*sim->system_size.y; i++)
+	for (int i = 0; i < sim->system_size.x*sim->system_size.y; i++) {
 		spinn_node_destroy(&(sim->nodes[i]));
+		for (int j = 0; j < 6; j++)
+			delay_destroy(&(sim->nodes[i].delays[j]));
+	}
 	free(sim->nodes);
 	
 	spinn_sim_config_destroy(sim);
