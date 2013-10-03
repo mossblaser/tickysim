@@ -22,12 +22,26 @@
  * Internal: Experiment paramter processing
  ******************************************************************************/
 
+// A list of parameters which are allowed to be changed when cold_group ==
+// false. If any other values appear in the independent variables list then the
+// program will report an error.
+static const char *hot_params[] = {
+	"model.packet_generator.bernoulli_prob",
+	"model.packet_consumer.bernoulli_prob",
+	"model.node_to_node_links.packet_delay",
+};
+static const int num_hot_params = sizeof(hot_params)/sizeof(char *);
+
+
 /**
  * Set up the list of independent variables in the experiment.
  */
 void
 spinn_sim_config_init_independent_variables(spinn_sim_t *sim)
 {
+	// Is the experiment going to be cold started for each group?
+	bool cold_group = spinn_sim_config_lookup_bool(sim, "experiment.cold_group");
+	
 	// Get the list of variables
 	config_setting_t *ivar_list = config_lookup(&(sim->config), "experiment.independent_variables");
 	if (ivar_list == NULL || config_setting_type(ivar_list) != CONFIG_TYPE_LIST) {
@@ -61,6 +75,25 @@ spinn_sim_config_init_independent_variables(spinn_sim_t *sim)
 		if (ivar_setting == NULL) {
 			fprintf(stderr, "Independant variable '%s' (%s) not found.\n", key, name);
 			exit(-1);
+		}
+		
+		// Check that if we're doing hot group running the variable can be changed
+		// without a cold-start
+		if (!cold_group) {
+			bool can_hot_group = false;
+			for (int j = 0; j < num_hot_params; j++) {
+				if (strcmp(key, hot_params[i]) == 0) {
+					can_hot_group = true;
+					break;
+				}
+			}
+			
+			if (!can_hot_group) {
+				fprintf(stderr, "Changing '%s' with 'cold_group' = false is not possible.\n"
+				              , key
+				              );
+				exit(-1);
+			}
 		}
 		
 		// Add it to the list
