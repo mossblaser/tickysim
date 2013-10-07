@@ -30,8 +30,8 @@ AC_CONFIG_FILES([Makefile
 AM_PATH_CHECK
 
 # Test that libconfig is available
-PKG_CHECK_MODULES([LIBCONFIG], [libconfig >= 1.3],,
-	AC_MSG_ERROR([libconfig 1.3 or newer not found.])
+PKG_CHECK_MODULES([LIBCONFIG], [libconfig >= 1.4],,
+	AC_MSG_ERROR([libconfig 1.4 or newer not found.])
 )
 
 # Do all the configuration actions now! We're done.
