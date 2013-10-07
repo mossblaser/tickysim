@@ -26,8 +26,15 @@
 // false. If any other values appear in the independent variables list then the
 // program will report an error.
 static const char *hot_params[] = {
-	"model.packet_generator.bernoulli_prob",
-	"model.packet_consumer.bernoulli_prob",
+	"model.packet_generator.temporal.dist",
+	"model.packet_generator.temporal.bernoulli_prob",
+	"model.packet_generator.temporal.periodic_interval",
+	"model.packet_generator.spatial.dist",
+	
+	"model.packet_consumer.temporal.dist",
+	"model.packet_consumer.temporal.bernoulli_prob",
+	"model.packet_consumer.temporal.periodic_interval",
+	
 	"model.node_to_node_links.packet_delay",
 };
 static const int num_hot_params = sizeof(hot_params)/sizeof(char *);
@@ -82,7 +89,7 @@ spinn_sim_config_init_independent_variables(spinn_sim_t *sim)
 		if (!cold_group) {
 			bool can_hot_group = false;
 			for (int j = 0; j < num_hot_params; j++) {
-				if (strcmp(key, hot_params[i]) == 0) {
+				if (strcmp(key, hot_params[j]) == 0) {
 					can_hot_group = true;
 					break;
 				}

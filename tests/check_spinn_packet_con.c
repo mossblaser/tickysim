@@ -22,6 +22,8 @@
 
 #define PERIOD 3
 
+#define INTERVAL 7
+
 #define BUFFER_SIZE 10
 
 scheduler_t s;
@@ -67,9 +69,12 @@ on_packet_con(spinn_packet_t *p, void *data)
 // Create a packet generator with most arguments set to sensible defaults.
 #define INIT_CON(bernoulli_prob) \
 	spinn_packet_con_init( &c, &s, &b, &pool \
-	                     , PERIOD, (bernoulli_prob) \
+	                     , PERIOD \
 	                     , on_packet_con, (void *)1234 \
 	                     )
+
+#define SET_CON_BERNOULLI(prob) spinn_packet_con_set_temporal_dist_bernoulli(&c, (prob))
+#define SET_CON_PERIODIC(interval) spinn_packet_con_set_temporal_dist_periodic(&c, (interval))
 
 
 /**
@@ -78,7 +83,7 @@ on_packet_con(spinn_packet_t *p, void *data)
  */
 START_TEST (test_idle)
 {
-	INIT_CON(0.0);
+	INIT_CON(); SET_CON_BERNOULLI(0.0);
 	
 	// Fill the buffer with packets which are not to be accepted
 	for (int i = 0; i < BUFFER_SIZE; i++)
@@ -100,7 +105,7 @@ END_TEST
  */
 START_TEST (test_active)
 {
-	INIT_CON(1.0);
+	INIT_CON(); SET_CON_BERNOULLI(1.0);
 	
 	// Fill the buffer with packets which will all be accepted
 	for (int i = 0; i < BUFFER_SIZE; i++)
@@ -131,7 +136,7 @@ END_TEST
  */
 START_TEST (test_50_50)
 {
-	INIT_CON(0.5);
+	INIT_CON(); SET_CON_BERNOULLI(0.5);
 	
 	// Fill the buffer with packets, some of which will be accepted
 	for (int i = 0; i < BUFFER_SIZE; i++)
@@ -150,6 +155,85 @@ START_TEST (test_50_50)
 END_TEST
 
 
+/**
+ * Ensure with a periodic interval, packets are consumed at the correct times when
+ * the input is not blocked.
+ */
+START_TEST (test_periodic_free)
+{
+	INIT_CON();
+	SET_CON_PERIODIC(INTERVAL);
+	
+	// Fill the buffer with packets
+	for (int i = 0; i < BUFFER_SIZE; i++)
+		buffer_push(&b, spinn_packet_pool_palloc(&pool));
+	
+	// Run for long enough that the buffer ends up empty
+	for (int i = 0; i < BUFFER_SIZE; i++) {
+		// Run the consumer for a single interval until the end of which no packets
+		// should be received
+		for (int j = 0; j < INTERVAL; j++) {
+			ck_assert_int_eq(packets_received, i);
+			for (int k = 0; k < PERIOD; k++) {
+				scheduler_tick_tock(&s);
+			}
+		}
+		
+		// A packet should have been received by now
+		ck_assert(!buffer_is_full(&b));
+		ck_assert_int_eq(packets_received, i+1);
+	}
+	
+	// The buffer should end up empty
+	ck_assert(buffer_is_empty(&b));
+	ck_assert_int_eq(packets_received, BUFFER_SIZE);
+}
+END_TEST
+
+
+/**
+ * Ensure with a periodic interval, packets are received at the correct times
+ * when the input is empty.
+ */
+START_TEST (test_periodic_blocked)
+{
+	INIT_CON();
+	SET_CON_PERIODIC(INTERVAL);
+	
+	// Run the generator for one and a half intervals, during which time nothing
+	// should be received and we end up at what would be mid-interval had a packet
+	// been received.
+	for (int j = 0; j < PERIOD*(INTERVAL + (INTERVAL/2)); j++) {
+		scheduler_tick_tock(&s);
+		// Nothing should have got through
+		ck_assert_int_eq(packets_received, 0);
+	}
+	
+	// If a couple of packets are added to the buffer, the consumer should
+	// immediately consume a packet.
+	buffer_push(&b, spinn_packet_pool_palloc(&pool));
+	buffer_push(&b, spinn_packet_pool_palloc(&pool));
+	for (int k = 0; k < PERIOD; k++)
+		scheduler_tick_tock(&s);
+	ck_assert_int_eq(packets_received, 1);
+	ck_assert(!buffer_is_empty(&b));
+	
+	// The consumer should then consume a further packet exactly one interval
+	// later
+	for (int j = 0; j < INTERVAL; j++) {
+		// The second value should not have got through yet
+		ck_assert_int_eq(packets_received, 1);
+		
+		for (int k = 0; k < PERIOD; k++) {
+			scheduler_tick_tock(&s);
+		}
+	}
+	ck_assert_int_eq(packets_received, 2);
+	ck_assert(buffer_is_empty(&b));
+}
+END_TEST
+
+
 Suite *
 make_spinn_packet_con_suite(void)
 {
@@ -161,6 +245,8 @@ make_spinn_packet_con_suite(void)
 	tcase_add_test(tc_core, test_idle);
 	tcase_add_test(tc_core, test_active);
 	tcase_add_test(tc_core, test_50_50);
+	tcase_add_test(tc_core, test_periodic_free);
+	tcase_add_test(tc_core, test_periodic_blocked);
 	
 	// Add each test case to the suite
 	suite_add_tcase(s, tc_core);

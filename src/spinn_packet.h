@@ -127,8 +127,8 @@ void spinn_packet_pool_pfree(spinn_packet_pool_t *pool, spinn_packet_t *packet);
 
 
 /**
- * Create a packet generator which produces packets destined for a cyclic
- * pattern of destination.
+ * Create a packet generator. The distributions to be used must be set using the
+ * functions which follow.
  *
  * @param scheduler A scheduler into which the packet generator will schedule
  *                  itself.
@@ -140,8 +140,6 @@ void spinn_packet_pool_pfree(spinn_packet_pool_t *pool, spinn_packet_t *packet);
  * @param system_size The size of the torus being simulated.
  *
  * @param period The period at which the packet generator will run.
- * @param bernoulli_prob The probability with which a packet will be generated
- *                       when the packet generator runs.
  *
  * @param on_packet_gen Is a function called during the tock phase just after
  *                      packet creation but before it is sent. The value
@@ -151,63 +149,61 @@ void spinn_packet_pool_pfree(spinn_packet_pool_t *pool, spinn_packet_t *packet);
  *                      of packet is NULL.
  * @param on_packet_gen_data A pointer passed to the on_packet_gen function.
  */
-void spinn_packet_gen_cyclic_init( spinn_packet_gen_t *gen
-                                 , scheduler_t         *scheduler
-                                 , buffer_t            *buffer
-                                 , spinn_packet_pool_t *packet_pool
-                                 , spinn_coord_t        position
-                                 , spinn_coord_t        system_size
-                                 , ticks_t              period
-                                 , double               bernoulli_prob
-                                 , void *(*on_packet_gen)(spinn_packet_t *packet, void *data)
-                                 , void *on_packet_gen_data
-                                 );
+void spinn_packet_gen_init( spinn_packet_gen_t  *gen
+                          , scheduler_t         *scheduler
+                          , buffer_t            *buffer
+                          , spinn_packet_pool_t *packet_pool
+                          , spinn_coord_t        position
+                          , spinn_coord_t        system_size
+                          , ticks_t              period
+                          , void *(*on_packet_gen)(spinn_packet_t *packet, void *data)
+                          , void *on_packet_gen_data
+                          );
 
 
 /**
- * Create a packet generator which produces packets destined for a uniform
- * random locations.
+ * Set up the packet generator to use the given Bernoulli distribution to decide
+ * when to generate packets.
  *
- * @param scheduler A scheduler into which the packet generator will schedule
- *                  itself.
- * @param buffer The buffer into which generated packets will be inserted.
- * @param packet_pool A pool of packet objects to save on malloc/free calls.
- *
- * @param position The coordinates of the router the packet generator will be
- *                 feeding.
- * @param system_size The size of the torus being simulated.
- *
- * @param period The period at which the packet generator will run.
- * @param bernoulli_prob The probability with which a packet will be generated
- *                       when the packet generator runs.
- *
- * @param on_packet_gen Is a function called during the tock phase just after
- *                      packet creation but before it is sent. The value
- *                      returned is set as the packet payload. If NULL, the
- *                      callback is disabled. If the output is blocked but a
- *                      packet would have been generated if it wasnt, the value
- *                      of packet is NULL.
- * @param on_packet_gen_data A pointer passed to the on_packet_gen function.
+ * This should be called outside of the simulation tick/tock phases for
+ * deterministic behaviour.
  */
-void spinn_packet_gen_uniform_init( spinn_packet_gen_t *gen
-                                  , scheduler_t         *scheduler
-                                  , buffer_t            *buffer
-                                  , spinn_packet_pool_t *packet_pool
-                                  , spinn_coord_t        position
-                                  , spinn_coord_t        system_size
-                                  , ticks_t              period
-                                  , double               bernoulli_prob
-                                  , void *(*on_packet_gen)(spinn_packet_t *packet, void *data)
-                                  , void *on_packet_gen_data
-                                  );
+void spinn_packet_gen_set_temporal_dist_bernoulli( spinn_packet_gen_t *packet_gen
+                                                 , double              bernoulli_prob
+                                                 );
+
 
 /**
- * Change the bernoulli_prob of generating a packet. This should be called
- * outside of the simulation tick/tock phases for deterministic behaviour.
+ * Set up the packet generator to use the given periodic process decide when to
+ * generate packets. After a given interval, a packet will be sent, or if the
+ * output is blocked, resend will be tried in the next period until it is sent.
+ * At this point, the process repeats.
+ *
+ * This should be called outside of the simulation tick/tock phases for
+ * deterministic behaviour.
  */
-void spinn_packet_gen_set_bernoulli_prob( spinn_packet_gen_t *packet_gen
-                                        , double              bernoulli_prob
-                                        );
+void spinn_packet_gen_set_temporal_dist_periodic( spinn_packet_gen_t *packet_gen
+                                                , int                 interval
+                                                );
+
+
+/**
+ * Set up the packet generator to send packets to uniform random destinations.
+ *
+ * This should be called outside of the simulation tick/tock phases for
+ * deterministic behaviour.
+ */
+void spinn_packet_gen_set_spatial_dist_uniform(spinn_packet_gen_t *packet_gen);
+
+
+/**
+ * Set up the packet generator to send packets to each node of the system in
+ * turn, starting with the current node.
+ *
+ * This should be called outside of the simulation tick/tock phases for
+ * deterministic behaviour.
+ */
+void spinn_packet_gen_set_spatial_dist_cyclic(spinn_packet_gen_t *packet_gen);
 
 /**
  * Free the resources used by a packet generator.
@@ -229,8 +225,6 @@ void spinn_packet_gen_destroy(spinn_packet_gen_t *packet_gen);
  * @param packet_pool A pool of packet objects to save on malloc/free calls.
  *
  * @param period The period at which the packet generator will run.
- * @param bernoulli_prob The probability with which a packet will be accepted
- *                       when the packet consumer runs.
  *
  * @param on_packet_con Is a function called during the tock phase just after
  *                      the packet arrives and just before it is freed. If NULL,
@@ -242,18 +236,35 @@ void spinn_packet_con_init( spinn_packet_con_t  *con
                           , buffer_t            *buffer
                           , spinn_packet_pool_t *packet_pool
                           , ticks_t              period
-                          , double               bernoulli_prob
                           , void (*on_packet_con)(spinn_packet_t *packet, void *data)
                           , void *on_packet_con_data
                           );
 
+
 /**
- * Change the bernoulli_prob of consuming a packet. This should be called
- * outside of the simulation tick/tock phases for deterministic behaviour.
+ * Set up the packet consumer to use the given Bernoulli distribution to decide
+ * when to consume packets.
+ *
+ * This should be called outside of the simulation tick/tock phases for
+ * deterministic behaviour.
  */
-void spinn_packet_con_set_bernoulli_prob( spinn_packet_con_t *packet_con
-                                        , double              bernoulli_prob
-                                        );
+void spinn_packet_con_set_temporal_dist_bernoulli( spinn_packet_con_t *packet_con
+                                                 , double              bernoulli_prob
+                                                 );
+
+
+/**
+ * Set up the packet consumer to use the given periodic process decide when to
+ * consume packets. After a given interval, a packet will be sent, or if the
+ * output is blocked, resend will be tried in the next period until it is sent.
+ * At this point, the process repeats.
+ *
+ * This should be called outside of the simulation tick/tock phases for
+ * deterministic behaviour.
+ */
+void spinn_packet_con_set_temporal_dist_periodic( spinn_packet_con_t *packet_con
+                                                , int                 interval
+                                                );
 
 
 /**

@@ -33,10 +33,17 @@ struct spinn_packet_pool {
 };
 
 
-typedef enum spinn_packet_gen_dist {
-	SPINN_DIST_CYCLIC,
-	SPINN_DIST_UNIFORM,
-} spinn_packet_gen_dist_t;
+typedef enum spinn_packet_gen_spatial_dist {
+	SPINN_GS_DIST_CYCLIC,
+	SPINN_GS_DIST_UNIFORM,
+} spinn_packet_gen_spatial_dist_t;
+
+
+
+typedef enum spinn_packet_gen_temporal_dist {
+	SPINN_GT_DIST_BERNOULLI,
+	SPINN_GT_DIST_PERIODIC,
+} spinn_packet_gen_temporal_dist_t;
 
 
 struct spinn_packet_gen {
@@ -53,32 +60,60 @@ struct spinn_packet_gen {
 	spinn_coord_t position;
 	spinn_coord_t system_size;
 	
-	// How frequently will packets be produced
-	double bernoulli_prob;
-	
 	// Should a packet be sent during the tock phase?
 	bool send_packet;
 	
 	// Is the output buffer full (i.e. should sending a packet fail?)?
 	bool output_blocked;
 	
-	// The distribution to use when generating packets.
-	spinn_packet_gen_dist_t dist;
+	// The spatial distribution to use when generating packets.
+	spinn_packet_gen_spatial_dist_t  spatial_dist;
 	
 	// State data used by the various packet generation schemes
+	// Spatial distribution data
 	union {
+		
+		// Uniform packet generator data
+		// *No state required*
 		
 		// Cyclic packet generator data
 		struct {
 			spinn_coord_t next_dest;
 		} cyclic;
 		
-	} dist_data;
+	} spatial_dist_data;
+	
+	// The temporal distribution to use when generating packets.
+	spinn_packet_gen_temporal_dist_t temporal_dist;
+	
+	// Temporal distribution data
+	union {
+		
+		// Bernoulli distribution
+		struct {
+			double prob;
+		} bernoulli;
+		
+		// Periodic distribution
+		struct {
+			int interval;
+			int time_elapsed;
+		} periodic;
+		
+	} temporal_dist_data;
 	
 	// Callback on packet create/send
 	void *(*on_packet_gen)(spinn_packet_t *packet, void *data);
 	void *on_packet_gen_data;
 };
+
+
+
+typedef enum spinn_packet_con_temporal_dist {
+	SPINN_CT_DIST_BERNOULLI,
+	SPINN_CT_DIST_PERIODIC,
+} spinn_packet_con_temporal_dist_t;
+
 
 struct spinn_packet_con {
 	// The buffer from which packets will be consumed
@@ -87,11 +122,27 @@ struct spinn_packet_con {
 	// Pool of packets to send
 	spinn_packet_pool_t *pool;
 	
-	// How frequently will packets be consumed
-	double bernoulli_prob;
-	
 	// Should a packet be consumed during the tock phase?
 	bool consume_packet;
+	
+	// The temporal distribution to use when generating packets.
+	spinn_packet_con_temporal_dist_t temporal_dist;
+	
+	// Temporal distribution data
+	union {
+		
+		// Bernoulli distribution
+		struct {
+			double prob;
+		} bernoulli;
+		
+		// Periodic distribution
+		struct {
+			int interval;
+			int time_elapsed;
+		} periodic;
+		
+	} temporal_dist_data;
 	
 	// Callback on packet consumption
 	void (*on_packet_con)(spinn_packet_t *packet, void *data);

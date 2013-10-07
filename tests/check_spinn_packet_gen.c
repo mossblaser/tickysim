@@ -29,6 +29,8 @@
 #define SYSTEM_SIZE_Y 7
 #define SYSTEM_SIZE ((spinn_coord_t){SYSTEM_SIZE_X,SYSTEM_SIZE_Y})
 
+#define INTERVAL 7
+
 scheduler_t s;
 buffer_t b;
 spinn_packet_pool_t pool;
@@ -76,12 +78,18 @@ on_packet_gen(spinn_packet_t *p, void *data)
  ******************************************************************************/
 
 // Create a packet generator with most arguments set to sensible defaults.
-#define INIT_GEN(create_func, bernoulli_prob) \
-	(create_func)( &g, &s, &b, &pool \
-	             , POSITION, SYSTEM_SIZE \
-	             , PERIOD, (bernoulli_prob) \
-	             , on_packet_gen, (void *)1234 \
-	             )
+#define INIT_GEN() \
+	spinn_packet_gen_init( &g, &s, &b, &pool \
+	                     , POSITION, SYSTEM_SIZE \
+	                     , PERIOD \
+	                     , on_packet_gen, (void *)1234 \
+	                     )
+
+#define SET_GEN_BERNOULLI(prob) spinn_packet_gen_set_temporal_dist_bernoulli(&g, (prob))
+#define SET_GEN_PERIODIC(interval) spinn_packet_gen_set_temporal_dist_periodic(&g, (interval))
+
+#define SET_GEN_CYCLIC() spinn_packet_gen_set_spatial_dist_cyclic(&g)
+#define SET_GEN_UNIFORM() spinn_packet_gen_set_spatial_dist_uniform(&g)
 
 
 /**
@@ -92,8 +100,8 @@ START_TEST (test_idle)
 {
 	switch (_i) {
 		default:
-		case 0: INIT_GEN(spinn_packet_gen_cyclic_init, 0.0); break;
-		case 1: INIT_GEN(spinn_packet_gen_uniform_init, 0.0); break;
+		case 0: INIT_GEN(); SET_GEN_BERNOULLI(0.0); SET_GEN_CYCLIC(); break;
+		case 1: INIT_GEN(); SET_GEN_BERNOULLI(0.0); SET_GEN_UNIFORM(); break;
 	}
 	
 	for (int i = 0; i < PERIOD * 10; i++)
@@ -115,8 +123,8 @@ START_TEST (test_certain)
 {
 	switch (_i) {
 		default:
-		case 0: INIT_GEN(spinn_packet_gen_cyclic_init, 1.0); break;
-		case 1: INIT_GEN(spinn_packet_gen_uniform_init, 1.0); break;
+		case 0: INIT_GEN(); SET_GEN_BERNOULLI(1.0); SET_GEN_CYCLIC(); break;
+		case 1: INIT_GEN(); SET_GEN_BERNOULLI(1.0); SET_GEN_UNIFORM(); break;
 	}
 	
 	// Run for long enough that the buffer ends up full
@@ -149,8 +157,8 @@ START_TEST (test_50_50)
 {
 	switch (_i) {
 		default:
-		case 0: INIT_GEN(spinn_packet_gen_cyclic_init, 0.5); break;
-		case 1: INIT_GEN(spinn_packet_gen_uniform_init, 0.5); break;
+		case 0: INIT_GEN(); SET_GEN_BERNOULLI(0.5); SET_GEN_CYCLIC(); break;
+		case 1: INIT_GEN(); SET_GEN_BERNOULLI(0.5); SET_GEN_UNIFORM(); break;
 	}
 	
 	// Run for long enough that the buffer would end up full if the probability
@@ -175,7 +183,7 @@ END_TEST
  */
 START_TEST (test_cyclic_dist)
 {
-	INIT_GEN(spinn_packet_gen_cyclic_init, 1.0);
+	INIT_GEN(); SET_GEN_BERNOULLI(1.0); SET_GEN_CYCLIC();
 	
 	// A count of the number of times a node is visited
 	int visited_nodes[SYSTEM_SIZE_X][SYSTEM_SIZE_Y] = {{0}};
@@ -210,6 +218,93 @@ START_TEST (test_cyclic_dist)
 END_TEST
 
 
+/**
+ * Ensure with a periodic interval, packets are sent at the correct times when
+ * the output is not blocked.
+ */
+START_TEST (test_periodic_free)
+{
+	switch (_i) {
+		default:
+		case 0: INIT_GEN(); SET_GEN_PERIODIC(INTERVAL); SET_GEN_CYCLIC(); break;
+		case 1: INIT_GEN(); SET_GEN_PERIODIC(INTERVAL); SET_GEN_UNIFORM(); break;
+	}
+	
+	// Run for long enough that the buffer ends up full
+	for (int i = 0; i < BUFFER_SIZE; i++) {
+		// Run the generator for a single interval until the end of which no packets
+		// should be sent
+		for (int j = 0; j < INTERVAL; j++) {
+			ck_assert_int_eq(packets_sent, i);
+			for (int k = 0; k < PERIOD; k++) {
+				scheduler_tick_tock(&s);
+			}
+		}
+		
+		// A packet should have arrived by now
+		ck_assert(!buffer_is_empty(&b));
+		ck_assert_int_eq(packets_sent, i+1);
+	}
+	
+	// The buffer should end up full
+	ck_assert(buffer_is_full(&b));
+	
+	ck_assert_int_eq(packets_sent, BUFFER_SIZE);
+	ck_assert_int_eq(packets_blocked, 0);
+}
+END_TEST
+
+
+/**
+ * Ensure with a periodic interval, packets are sent at the correct times when
+ * the output is blocked.
+ */
+START_TEST (test_periodic_blocked)
+{
+	switch (_i) {
+		default:
+		case 0: INIT_GEN(); SET_GEN_PERIODIC(INTERVAL); SET_GEN_CYCLIC(); break;
+		case 1: INIT_GEN(); SET_GEN_PERIODIC(INTERVAL); SET_GEN_UNIFORM(); break;
+	}
+	
+	// Fill the buffer
+	for (int i = 0; i < BUFFER_SIZE; i++)
+		buffer_push(&b, NULL);
+	
+	// Run the generator for one and a half intervals, during which time nothing
+	// should be sent and we end up at what would be mid-interval had the packet
+	// been sent.
+	for (int j = 0; j < PERIOD*(INTERVAL + (INTERVAL/2)); j++) {
+		scheduler_tick_tock(&s);
+		// Nothing should have got through
+		ck_assert_int_eq(packets_sent, 0);
+	}
+	
+	// If a couple of spaces are made in the buffer, the generator should
+	// immediately generate a packet.
+	buffer_pop(&b);
+	buffer_pop(&b);
+	for (int k = 0; k < PERIOD; k++)
+		scheduler_tick_tock(&s);
+	ck_assert_int_eq(packets_sent, 1);
+	ck_assert(!buffer_is_full(&b));
+	
+	// The generator should then generate a further packet exactly one interval
+	// later
+	for (int j = 0; j < INTERVAL; j++) {
+		// The second value should not have got through yet
+		ck_assert_int_eq(packets_sent, 1);
+		
+		for (int k = 0; k < PERIOD; k++) {
+			scheduler_tick_tock(&s);
+		}
+	}
+	ck_assert_int_eq(packets_sent, 2);
+	ck_assert(buffer_is_full(&b));
+}
+END_TEST
+
+
 Suite *
 make_spinn_packet_gen_suite(void)
 {
@@ -221,6 +316,8 @@ make_spinn_packet_gen_suite(void)
 	tcase_add_loop_test(tc_core, test_idle, 0, 2);
 	tcase_add_loop_test(tc_core, test_certain, 0, 2);
 	tcase_add_loop_test(tc_core, test_50_50, 0, 2);
+	tcase_add_loop_test(tc_core, test_periodic_free, 0, 2);
+	tcase_add_loop_test(tc_core, test_periodic_blocked, 0, 2);
 	tcase_add_test(tc_core, test_cyclic_dist);
 	
 	// Add each test case to the suite

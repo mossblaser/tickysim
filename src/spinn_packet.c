@@ -167,7 +167,21 @@ spinn_packet_gen_tick(void *g_)
 {
 	spinn_packet_gen_t *g = (spinn_packet_gen_t *)g_;
 	
-	g->send_packet    = (((double)rand())/((double)RAND_MAX+1.0)) <= g->bernoulli_prob;
+	switch (g->temporal_dist) {
+		case SPINN_GT_DIST_BERNOULLI:
+			g->send_packet = (((double)rand())/((double)RAND_MAX+1.0)) <= g->temporal_dist_data.bernoulli.prob;
+			break;
+		
+		case SPINN_GT_DIST_PERIODIC:
+			g->send_packet = g->temporal_dist_data.periodic.time_elapsed >= g->temporal_dist_data.periodic.interval - 1;
+			g->temporal_dist_data.periodic.time_elapsed++;
+			break;
+		
+		default:
+			g->send_packet = false;
+			break;
+	}
+	
 	g->output_blocked = buffer_is_full(g->buffer);
 }
 
@@ -183,7 +197,7 @@ spinn_packet_gen_tock(void *g_)
 	if (!g->send_packet)
 		return;
 	
-	// If the buffer is full, don't sent but raise the callback with a NULL packet
+	// If the buffer is full, don't send but raise the callback with a NULL packet
 	if (g->output_blocked) {
 		if (g->on_packet_gen)
 			g->on_packet_gen(NULL, g->on_packet_gen_data);
@@ -194,23 +208,23 @@ spinn_packet_gen_tock(void *g_)
 	
 	// Determine the packet destination based on the current distribution
 	spinn_coord_t destination;
-	switch (g->dist) {
-		case SPINN_DIST_CYCLIC:
-			destination = g->dist_data.cyclic.next_dest;
+	switch (g->spatial_dist) {
+		case SPINN_GS_DIST_CYCLIC:
+			destination = g->spatial_dist_data.cyclic.next_dest;
 			
 			// Move to the next node
-			g->dist_data.cyclic.next_dest.x ++;
-			if (g->dist_data.cyclic.next_dest.x >= g->system_size.x) {
-				g->dist_data.cyclic.next_dest.x = 0;
-				g->dist_data.cyclic.next_dest.y ++;
-				if (g->dist_data.cyclic.next_dest.y >= g->system_size.y) {
-					g->dist_data.cyclic.next_dest.y = 0;
+			g->spatial_dist_data.cyclic.next_dest.x ++;
+			if (g->spatial_dist_data.cyclic.next_dest.x >= g->system_size.x) {
+				g->spatial_dist_data.cyclic.next_dest.x = 0;
+				g->spatial_dist_data.cyclic.next_dest.y ++;
+				if (g->spatial_dist_data.cyclic.next_dest.y >= g->system_size.y) {
+					g->spatial_dist_data.cyclic.next_dest.y = 0;
 				}
 			}
 			break;
 		
 		default:
-		case SPINN_DIST_UNIFORM:
+		case SPINN_GS_DIST_UNIFORM:
 			destination.x = (int)((((double)rand())/((double)RAND_MAX+1.0)) * g->system_size.x);
 			destination.y = (int)((((double)rand())/((double)RAND_MAX+1.0)) * g->system_size.y);
 			break;
@@ -228,26 +242,23 @@ spinn_packet_gen_tock(void *g_)
 	// Send the packet
 	buffer_push(g->buffer, (void *)p);
 	
-	// Clear the flag
-	g->send_packet = false;
+	// Reset the timer for the periodic temporal distribution as a packet has now
+	// been sent
+	if (g->temporal_dist == SPINN_GT_DIST_PERIODIC)
+		g->temporal_dist_data.periodic.time_elapsed = 0;
 }
 
-/**
- * Internal function. Do the basic initialisation common to all packet
- * generators.
- */
+
 void
-spinn_packet_gen_init_base( spinn_packet_gen_t *g
+spinn_packet_gen_init( spinn_packet_gen_t *g
                           , scheduler_t             *s
                           , buffer_t                *b
                           , spinn_packet_pool_t     *pool
                           , spinn_coord_t            position
                           , spinn_coord_t            system_size
                           , ticks_t                  period
-                          , double                   bernoulli_prob
                           , void *(*on_packet_gen)(spinn_packet_t *packet, void *data)
                           , void *on_packet_gen_data
-                          , spinn_packet_gen_dist_t  dist
                           )
 {
 	// Set up data-structure fields
@@ -256,65 +267,52 @@ spinn_packet_gen_init_base( spinn_packet_gen_t *g
 	g->pool               = pool;
 	g->position           = position;
 	g->system_size        = system_size;
-	g->bernoulli_prob     = bernoulli_prob;
 	g->on_packet_gen      = on_packet_gen;
 	g->on_packet_gen_data = on_packet_gen_data;
-	g->dist               = dist;
 	
 	// Set up tick/tock functions
 	scheduler_schedule( s, period
 	                  , spinn_packet_gen_tick, (void *)g
 	                  , spinn_packet_gen_tock, (void *)g
 	                  );
-}
-
-void
-spinn_packet_gen_cyclic_init( spinn_packet_gen_t  *g
-                            , scheduler_t         *s
-                            , buffer_t            *b
-                            , spinn_packet_pool_t *pool
-                            , spinn_coord_t        position
-                            , spinn_coord_t        system_size
-                            , ticks_t              period
-                            , double               bernoulli_prob
-                            , void *(*on_packet_gen)(spinn_packet_t *packet, void *data)
-                            , void *on_packet_gen_data
-                            )
-{
-	spinn_packet_gen_init_base(
-		g,s,b,pool,position,system_size, period, bernoulli_prob, on_packet_gen, on_packet_gen_data,
-		SPINN_DIST_CYCLIC);
 	
-	// Start the cyclic message sending from the current position
-	g->dist_data.cyclic.next_dest = position;
+	// Initially leave distribution values undefined.
 }
 
 
 void
-spinn_packet_gen_uniform_init( spinn_packet_gen_t  *g
-                             , scheduler_t         *s
-                             , buffer_t            *b
-                             , spinn_packet_pool_t *pool
-                             , spinn_coord_t        position
-                             , spinn_coord_t        system_size
-                             , ticks_t              period
-                             , double               bernoulli_prob
-                             , void *(*on_packet_gen)(spinn_packet_t *packet, void *data)
-                             , void *on_packet_gen_data
-                             )
+spinn_packet_gen_set_temporal_dist_bernoulli( spinn_packet_gen_t *g
+                                            , double              bernoulli_prob
+                                            )
 {
-	spinn_packet_gen_init_base(
-		g,s,b,pool,position,system_size, period, bernoulli_prob, on_packet_gen, on_packet_gen_data,
-		SPINN_DIST_UNIFORM);
+	g->temporal_dist = SPINN_GT_DIST_BERNOULLI;
+	g->temporal_dist_data.bernoulli.prob = bernoulli_prob;
 }
 
 
 void
-spinn_packet_gen_set_bernoulli_prob( spinn_packet_gen_t *g
-                                   , double              bernoulli_prob
-                                   )
+spinn_packet_gen_set_temporal_dist_periodic( spinn_packet_gen_t *g
+                                           , int                 interval
+                                           )
 {
-	g->bernoulli_prob = bernoulli_prob;
+	g->temporal_dist = SPINN_GT_DIST_PERIODIC;
+	g->temporal_dist_data.periodic.interval = interval;
+	g->temporal_dist_data.periodic.time_elapsed = 0;
+}
+
+
+void
+spinn_packet_gen_set_spatial_dist_uniform(spinn_packet_gen_t *g)
+{
+	g->spatial_dist = SPINN_GS_DIST_UNIFORM;
+}
+
+
+void
+spinn_packet_gen_set_spatial_dist_cyclic(spinn_packet_gen_t *g)
+{
+	g->spatial_dist = SPINN_GS_DIST_CYCLIC;
+	g->spatial_dist_data.cyclic.next_dest = g->position;
 }
 
 
@@ -338,8 +336,25 @@ spinn_packet_con_tick(void *c_)
 {
 	spinn_packet_con_t *c = (spinn_packet_con_t *)c_;
 	
-	c->consume_packet = !buffer_is_empty(c->buffer)
-	                 && (((double)rand())/((double)RAND_MAX+1.0)) <= c->bernoulli_prob;
+	switch (c->temporal_dist) {
+		case SPINN_CT_DIST_BERNOULLI:
+			c->consume_packet = (((double)rand())/((double)RAND_MAX+1.0)) <= c->temporal_dist_data.bernoulli.prob;
+			break;
+		
+		case SPINN_CT_DIST_PERIODIC:
+			c->consume_packet = c->temporal_dist_data.periodic.time_elapsed >= c->temporal_dist_data.periodic.interval - 1;
+			c->temporal_dist_data.periodic.time_elapsed++;
+			break;
+		
+		default:
+			c->consume_packet = false;
+			break;
+	}
+	
+	// Do nothing after all if the buffer was empty anyway
+	if (buffer_is_empty(c->buffer)) {
+		c->consume_packet = false;
+	}
 }
 
 /**
@@ -364,8 +379,10 @@ spinn_packet_con_tock(void *c_)
 	// Clear up
 	spinn_packet_pool_pfree(c->pool, p);
 	
-	// Clear the flag
-	c->consume_packet = false;
+	// Reset the timer for the periodic temporal distribution as a packet has now
+	// been sent
+	if (c->temporal_dist == SPINN_CT_DIST_PERIODIC)
+		c->temporal_dist_data.periodic.time_elapsed = 0;
 }
 
 void
@@ -374,7 +391,6 @@ spinn_packet_con_init( spinn_packet_con_t      *c
                      , buffer_t                *b
                      , spinn_packet_pool_t     *pool
                      , ticks_t                  period
-                     , double                   bernoulli_prob
                      , void (*on_packet_con)(spinn_packet_t *packet, void *data)
                      , void *on_packet_con_data
                      )
@@ -382,7 +398,6 @@ spinn_packet_con_init( spinn_packet_con_t      *c
 	// Set up data-structure fields
 	c->buffer             = b;
 	c->pool               = pool;
-	c->bernoulli_prob     = bernoulli_prob;
 	c->on_packet_con      = on_packet_con;
 	c->on_packet_con_data = on_packet_con_data;
 	
@@ -391,15 +406,29 @@ spinn_packet_con_init( spinn_packet_con_t      *c
 	                  , spinn_packet_con_tick, (void *)c
 	                  , spinn_packet_con_tock, (void *)c
 	                  );
+	
+	// Initially leave the distribution parameters undefined.
 }
 
 
 void
-spinn_packet_con_set_bernoulli_prob( spinn_packet_con_t *c
-                                   , double              bernoulli_prob
-                                   )
+spinn_packet_con_set_temporal_dist_bernoulli( spinn_packet_con_t *c
+                                            , double              bernoulli_prob
+                                            )
 {
-	c->bernoulli_prob = bernoulli_prob;
+	c->temporal_dist = SPINN_GT_DIST_BERNOULLI;
+	c->temporal_dist_data.bernoulli.prob = bernoulli_prob;
+}
+
+
+void
+spinn_packet_con_set_temporal_dist_periodic( spinn_packet_con_t *c
+                                           , int                 interval
+                                           )
+{
+	c->temporal_dist = SPINN_GT_DIST_PERIODIC;
+	c->temporal_dist_data.periodic.interval = interval;
+	c->temporal_dist_data.periodic.time_elapsed = 0;
 }
 
 

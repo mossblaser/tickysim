@@ -27,10 +27,76 @@
 #include "spinn_sim_stat.h"
 
 /******************************************************************************
+ * Initialisation for values which can be changed mid-simulation (to save
+ * duplication in the spinn_node_init and spinn_sim_model_update functions)
+ ******************************************************************************/
+
+static void
+configure_node_packet_gen(spinn_node_t *node)
+{
+	// Set temporal distribution
+	const char *gen_temporal_dist
+		= spinn_sim_config_lookup_string(node->sim, "model.packet_generator.temporal.dist");
+	if (strcmp(gen_temporal_dist, "bernoulli") == 0) {
+		double prob
+			= spinn_sim_config_lookup_float(node->sim, "model.packet_generator.temporal.bernoulli_prob");
+		spinn_packet_gen_set_temporal_dist_bernoulli(&(node->packet_gen), prob);
+	} else if (strcmp(gen_temporal_dist, "periodic") == 0) {
+		int interval
+			= spinn_sim_config_lookup_int(node->sim, "model.packet_generator.temporal.periodic_interval");
+		spinn_packet_gen_set_temporal_dist_periodic(&(node->packet_gen), interval);
+	} else {
+		fprintf(stderr, "Error: model.packet_generator.temporal.dist not recognised!\n");
+		exit(-1);
+	}
+	
+	// Set spatial distribution
+	const char *gen_spatial_dist
+		= spinn_sim_config_lookup_string(node->sim, "model.packet_generator.spatial.dist");
+	if (strcmp(gen_spatial_dist, "uniform") == 0) {
+		spinn_packet_gen_set_spatial_dist_uniform(&(node->packet_gen));
+	} else if (strcmp(gen_spatial_dist, "cyclic") == 0) {
+		spinn_packet_gen_set_spatial_dist_cyclic(&(node->packet_gen));
+	} else {
+		fprintf(stderr, "Error: model.packet_generator.spatial.dist not recognised!\n");
+		exit(-1);
+	}
+}
+
+static void
+configure_node_packet_con(spinn_node_t *node)
+{
+	// Set temporal distribution
+	const char *con_temporal_dist
+		= spinn_sim_config_lookup_string(node->sim, "model.packet_consumer.temporal.dist");
+	if (strcmp(con_temporal_dist, "bernoulli") == 0) {
+		double prob
+			= spinn_sim_config_lookup_float(node->sim, "model.packet_consumer.temporal.bernoulli_prob");
+		spinn_packet_con_set_temporal_dist_bernoulli(&(node->packet_con), prob);
+	} else if (strcmp(con_temporal_dist, "periodic") == 0) {
+		int interval
+			= spinn_sim_config_lookup_int(node->sim, "model.packet_consumer.temporal.periodic_interval");
+		spinn_packet_con_set_temporal_dist_periodic(&(node->packet_con), interval);
+	} else {
+		fprintf(stderr, "Error: model.packet_consumer.temporal.dist not recognised!\n");
+		exit(-1);
+	}
+}
+
+static void
+configure_node_to_node_links(spinn_node_t *node)
+{
+	// Change the node-to-node delays
+	int delay_ticks = spinn_sim_config_lookup_int(node->sim, "model.node_to_node_links.packet_delay");
+	for (int i = 0; i < 6; i++)
+		delay_set_delay(&(node->delays[i]), delay_ticks);
+}
+
+/******************************************************************************
  * Node initialisation
  ******************************************************************************/
 
-void
+static void
 spinn_node_init( spinn_sim_t   *sim
                , spinn_node_t  *node
                , spinn_coord_t  position
@@ -157,46 +223,29 @@ spinn_node_init( spinn_sim_t   *sim
 	
 	// Packet generator
 	int gen_period = spinn_sim_config_lookup_int(sim, "model.packet_generator.period");
-	double gen_prob = spinn_sim_config_lookup_float(sim, "model.packet_generator.bernoulli_prob");
-	const char *gen_cyclic = spinn_sim_config_lookup_string(sim, "model.packet_generator.dist");
-	if (strcmp(gen_cyclic, "cyclic") == 0) {
-		spinn_packet_gen_cyclic_init( &(node->packet_gen)
-		                            , &(sim->scheduler)
-		                            , &(node->gen_buffer)
-		                            , &(sim->pool)
-		                            , node->position
-		                            , sim->system_size
-		                            , gen_period
-		                            , gen_prob
-		                            , spinn_sim_stat_on_packet_gen, (void *)node
-		                            );
-	} else if (strcmp(gen_cyclic, "uniform") == 0) {
-		spinn_packet_gen_uniform_init( &(node->packet_gen)
-		                             , &(sim->scheduler)
-		                             , &(node->gen_buffer)
-		                             , &(sim->pool)
-		                             , node->position
-		                             , sim->system_size
-		                             , gen_period
-		                             , gen_prob
-		                             , spinn_sim_stat_on_packet_gen, (void *)node
-		                             );
-	} else {
-		fprintf(stderr, "Error: packet_generator.dist not recognised!\n");
-		exit(-1);
-	}
+	spinn_packet_gen_init( &(node->packet_gen)
+	                     , &(sim->scheduler)
+	                     , &(node->gen_buffer)
+	                     , &(sim->pool)
+	                     , node->position
+	                     , sim->system_size
+	                     , gen_period
+	                     , spinn_sim_stat_on_packet_gen, (void *)node
+	                     );
+
+	configure_node_packet_gen(node);
 	
 	// Packet consumer
 	int con_period = spinn_sim_config_lookup_int(sim, "model.packet_consumer.period");
-	double con_prob = spinn_sim_config_lookup_float(sim, "model.packet_consumer.bernoulli_prob");
 	spinn_packet_con_init( &(node->packet_con)
 	                     , &(sim->scheduler)
 	                     , &(node->con_buffer)
 	                     , &(sim->pool)
 	                     , con_period
-	                     , con_prob
 		                   , spinn_sim_stat_on_packet_con, (void *)node
 	                     );
+	
+	configure_node_packet_con(node);
 	
 	// Get a pointer to each of the output buffers
 	buffer_t *output_buffers[7];
@@ -352,18 +401,10 @@ spinn_sim_model_update(spinn_sim_t *sim)
 	for (int y = 0; y < sim->system_size.y; y++) {
 		for (int x = 0; x < sim->system_size.x; x++) {
 			spinn_node_t *node = &(sim->nodes[(y * sim->system_size.x) + x]);
-			// Change the packet generator probability
-			double gen_prob = spinn_sim_config_lookup_float(sim, "model.packet_generator.bernoulli_prob");
-			spinn_packet_gen_set_bernoulli_prob(&(node->packet_gen), gen_prob);
 			
-			// Change the packet consumer probability
-			double con_prob = spinn_sim_config_lookup_float(sim, "model.packet_consumer.bernoulli_prob");
-			spinn_packet_con_set_bernoulli_prob(&(node->packet_con), con_prob);
-			
-			// Change the node-to-node delays
-			int delay_ticks = spinn_sim_config_lookup_int(sim, "model.node_to_node_links.packet_delay");
-			for (int i = 0; i < 6; i++)
-				delay_set_delay(&(node->delays[i]), delay_ticks);
+			configure_node_packet_gen(node);
+			configure_node_packet_con(node);
+			configure_node_to_node_links(node);
 		}
 	}
 }
