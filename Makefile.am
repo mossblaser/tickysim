@@ -2,4 +2,4 @@
 SUBDIRS = src . tests
 
 # Extra files to include in the distribution
-EXTRA_DIST = README.md configs/*.config
+EXTRA_DIST = README.md configs
