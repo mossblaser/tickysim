@@ -30,6 +30,7 @@ static const char *hot_params[] = {
 	"model.packet_generator.temporal.bernoulli_prob",
 	"model.packet_generator.temporal.periodic_interval",
 	"model.packet_generator.spatial.dist",
+	"model.packet_generator.spatial.allow_local",
 	
 	"model.packet_consumer.temporal.dist",
 	"model.packet_consumer.temporal.bernoulli_prob",

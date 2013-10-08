@@ -141,6 +141,9 @@ void spinn_packet_pool_pfree(spinn_packet_pool_t *pool, spinn_packet_t *packet);
  *
  * @param period The period at which the packet generator will run.
  *
+ * @param allow_local Should the generator be able to generate local packets,
+ *                    i.e. to the same position as the generator?
+ *
  * @param on_packet_gen Is a function called during the tock phase just after
  *                      packet creation but before it is sent. The value
  *                      returned is set as the packet payload. If NULL, the
@@ -156,9 +159,21 @@ void spinn_packet_gen_init( spinn_packet_gen_t  *gen
                           , spinn_coord_t        position
                           , spinn_coord_t        system_size
                           , ticks_t              period
+                          , bool                 allow_local
                           , void *(*on_packet_gen)(spinn_packet_t *packet, void *data)
                           , void *on_packet_gen_data
                           );
+
+
+/**
+ * Change whether local packets should be generated.
+ *
+ * This should be called outside of the simulation tick/tock phases for
+ * deterministic behaviour.
+ */
+void spinn_packet_gen_set_allow_local( spinn_packet_gen_t *packet_gen
+                                     , bool                allow_local
+                                     );
 
 
 /**

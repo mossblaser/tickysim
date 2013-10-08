@@ -78,10 +78,11 @@ on_packet_gen(spinn_packet_t *p, void *data)
  ******************************************************************************/
 
 // Create a packet generator with most arguments set to sensible defaults.
-#define INIT_GEN() \
+#define INIT_GEN(allow_local) \
 	spinn_packet_gen_init( &g, &s, &b, &pool \
 	                     , POSITION, SYSTEM_SIZE \
 	                     , PERIOD \
+	                     , (allow_local) \
 	                     , on_packet_gen, (void *)1234 \
 	                     )
 
@@ -100,8 +101,8 @@ START_TEST (test_idle)
 {
 	switch (_i) {
 		default:
-		case 0: INIT_GEN(); SET_GEN_BERNOULLI(0.0); SET_GEN_CYCLIC(); break;
-		case 1: INIT_GEN(); SET_GEN_BERNOULLI(0.0); SET_GEN_UNIFORM(); break;
+		case 0: INIT_GEN(true); SET_GEN_BERNOULLI(0.0); SET_GEN_CYCLIC(); break;
+		case 1: INIT_GEN(true); SET_GEN_BERNOULLI(0.0); SET_GEN_UNIFORM(); break;
 	}
 	
 	for (int i = 0; i < PERIOD * 10; i++)
@@ -123,8 +124,8 @@ START_TEST (test_certain)
 {
 	switch (_i) {
 		default:
-		case 0: INIT_GEN(); SET_GEN_BERNOULLI(1.0); SET_GEN_CYCLIC(); break;
-		case 1: INIT_GEN(); SET_GEN_BERNOULLI(1.0); SET_GEN_UNIFORM(); break;
+		case 0: INIT_GEN(true); SET_GEN_BERNOULLI(1.0); SET_GEN_CYCLIC(); break;
+		case 1: INIT_GEN(true); SET_GEN_BERNOULLI(1.0); SET_GEN_UNIFORM(); break;
 	}
 	
 	// Run for long enough that the buffer ends up full
@@ -157,8 +158,8 @@ START_TEST (test_50_50)
 {
 	switch (_i) {
 		default:
-		case 0: INIT_GEN(); SET_GEN_BERNOULLI(0.5); SET_GEN_CYCLIC(); break;
-		case 1: INIT_GEN(); SET_GEN_BERNOULLI(0.5); SET_GEN_UNIFORM(); break;
+		case 0: INIT_GEN(true); SET_GEN_BERNOULLI(0.5); SET_GEN_CYCLIC(); break;
+		case 1: INIT_GEN(true); SET_GEN_BERNOULLI(0.5); SET_GEN_UNIFORM(); break;
 	}
 	
 	// Run for long enough that the buffer would end up full if the probability
@@ -176,20 +177,21 @@ START_TEST (test_50_50)
 }
 END_TEST
 
-
 /**
  * Ensure that the cyclic distribution sends a packet to each node exactly twice
- * given a number of iterations equal to the number of nodes.
+ * given a number of iterations equal to the number of nodes. Also tests the
+ * allow_local option (by running with this both enabled and disabled).
  */
 START_TEST (test_cyclic_dist)
 {
-	INIT_GEN(); SET_GEN_BERNOULLI(1.0); SET_GEN_CYCLIC();
+	bool allow_local = _i != 0;
+	INIT_GEN(allow_local); SET_GEN_BERNOULLI(1.0); SET_GEN_CYCLIC();
 	
 	// A count of the number of times a node is visited
 	int visited_nodes[SYSTEM_SIZE_X][SYSTEM_SIZE_Y] = {{0}};
 	
 	// Run for long enough that every node should be visited twice
-	for (int i = 0; i < SYSTEM_SIZE.x*SYSTEM_SIZE.y*2; i++) {
+	for (int i = 0; i < (SYSTEM_SIZE.x*SYSTEM_SIZE.y*2) - (allow_local?0:2); i++) {
 		for (int j = 0; j < PERIOD; j++)
 			scheduler_tick_tock(&s);
 		
@@ -208,11 +210,15 @@ START_TEST (test_cyclic_dist)
 	// Check how many times each node is visited
 	for (int x = 0; x < SYSTEM_SIZE.x; x++) {
 		for (int y = 0; y < SYSTEM_SIZE.y; y++) {
-			ck_assert_int_eq(visited_nodes[x][y], 2);
+			if (allow_local) {
+				ck_assert_int_eq(visited_nodes[x][y], 2);
+			} else {
+				ck_assert_int_eq(visited_nodes[x][y], (POSITION.x==x && POSITION.y==y)?0:2);
+			}
 		}
 	}
 	
-	ck_assert_int_eq(packets_sent, SYSTEM_SIZE_X*SYSTEM_SIZE_Y*2);
+	ck_assert_int_eq(packets_sent, SYSTEM_SIZE_X*SYSTEM_SIZE_Y*2 - (allow_local?0:2));
 	ck_assert_int_eq(packets_blocked, 0);
 }
 END_TEST
@@ -226,8 +232,8 @@ START_TEST (test_periodic_free)
 {
 	switch (_i) {
 		default:
-		case 0: INIT_GEN(); SET_GEN_PERIODIC(INTERVAL); SET_GEN_CYCLIC(); break;
-		case 1: INIT_GEN(); SET_GEN_PERIODIC(INTERVAL); SET_GEN_UNIFORM(); break;
+		case 0: INIT_GEN(true); SET_GEN_PERIODIC(INTERVAL); SET_GEN_CYCLIC(); break;
+		case 1: INIT_GEN(true); SET_GEN_PERIODIC(INTERVAL); SET_GEN_UNIFORM(); break;
 	}
 	
 	// Run for long enough that the buffer ends up full
@@ -263,8 +269,8 @@ START_TEST (test_periodic_blocked)
 {
 	switch (_i) {
 		default:
-		case 0: INIT_GEN(); SET_GEN_PERIODIC(INTERVAL); SET_GEN_CYCLIC(); break;
-		case 1: INIT_GEN(); SET_GEN_PERIODIC(INTERVAL); SET_GEN_UNIFORM(); break;
+		case 0: INIT_GEN(true); SET_GEN_PERIODIC(INTERVAL); SET_GEN_CYCLIC(); break;
+		case 1: INIT_GEN(true); SET_GEN_PERIODIC(INTERVAL); SET_GEN_UNIFORM(); break;
 	}
 	
 	// Fill the buffer
@@ -318,7 +324,7 @@ make_spinn_packet_gen_suite(void)
 	tcase_add_loop_test(tc_core, test_50_50, 0, 2);
 	tcase_add_loop_test(tc_core, test_periodic_free, 0, 2);
 	tcase_add_loop_test(tc_core, test_periodic_blocked, 0, 2);
-	tcase_add_test(tc_core, test_cyclic_dist);
+	tcase_add_loop_test(tc_core, test_cyclic_dist, 0, 2);
 	
 	// Add each test case to the suite
 	suite_add_tcase(s, tc_core);

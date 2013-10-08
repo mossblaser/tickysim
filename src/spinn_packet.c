@@ -206,29 +206,35 @@ spinn_packet_gen_tock(void *g_)
 		return;
 	}
 	
-	// Determine the packet destination based on the current distribution
+	// Determine the packet destination based on the current distribution. If
+	// allow_local is false, loop until a destination is chosen which is not the
+	// local node.
 	spinn_coord_t destination;
-	switch (g->spatial_dist) {
-		case SPINN_GS_DIST_CYCLIC:
-			destination = g->spatial_dist_data.cyclic.next_dest;
-			
-			// Move to the next node
-			g->spatial_dist_data.cyclic.next_dest.x ++;
-			if (g->spatial_dist_data.cyclic.next_dest.x >= g->system_size.x) {
-				g->spatial_dist_data.cyclic.next_dest.x = 0;
-				g->spatial_dist_data.cyclic.next_dest.y ++;
-				if (g->spatial_dist_data.cyclic.next_dest.y >= g->system_size.y) {
-					g->spatial_dist_data.cyclic.next_dest.y = 0;
+	do {
+		switch (g->spatial_dist) {
+			case SPINN_GS_DIST_CYCLIC:
+				destination = g->spatial_dist_data.cyclic.next_dest;
+				
+				// Move to the next node
+				g->spatial_dist_data.cyclic.next_dest.x ++;
+				if (g->spatial_dist_data.cyclic.next_dest.x >= g->system_size.x) {
+					g->spatial_dist_data.cyclic.next_dest.x = 0;
+					g->spatial_dist_data.cyclic.next_dest.y ++;
+					if (g->spatial_dist_data.cyclic.next_dest.y >= g->system_size.y) {
+						g->spatial_dist_data.cyclic.next_dest.y = 0;
+					}
 				}
-			}
-			break;
-		
-		default:
-		case SPINN_GS_DIST_UNIFORM:
-			destination.x = (int)((((double)rand())/((double)RAND_MAX+1.0)) * g->system_size.x);
-			destination.y = (int)((((double)rand())/((double)RAND_MAX+1.0)) * g->system_size.y);
-			break;
-	}
+				break;
+			
+			default:
+			case SPINN_GS_DIST_UNIFORM:
+				destination.x = (int)((((double)rand())/((double)RAND_MAX+1.0)) * g->system_size.x);
+				destination.y = (int)((((double)rand())/((double)RAND_MAX+1.0)) * g->system_size.y);
+				break;
+		}
+	} while (!g->allow_local
+	         && destination.x == g->position.x
+	         && destination.y == g->position.y);
 	
 	// Produce the packet
 	spinn_packet_t *p = spinn_packet_pool_palloc(g->pool);
@@ -250,16 +256,17 @@ spinn_packet_gen_tock(void *g_)
 
 
 void
-spinn_packet_gen_init( spinn_packet_gen_t *g
-                          , scheduler_t             *s
-                          , buffer_t                *b
-                          , spinn_packet_pool_t     *pool
-                          , spinn_coord_t            position
-                          , spinn_coord_t            system_size
-                          , ticks_t                  period
-                          , void *(*on_packet_gen)(spinn_packet_t *packet, void *data)
-                          , void *on_packet_gen_data
-                          )
+spinn_packet_gen_init( spinn_packet_gen_t  *g
+                     , scheduler_t         *s
+                     , buffer_t            *b
+                     , spinn_packet_pool_t *pool
+                     , spinn_coord_t        position
+                     , spinn_coord_t        system_size
+                     , ticks_t              period
+                     , bool                 allow_local
+                     , void *(*on_packet_gen)(spinn_packet_t *packet, void *data)
+                     , void *on_packet_gen_data
+                     )
 {
 	// Set up data-structure fields
 	g->scheduler          = s;
@@ -267,6 +274,7 @@ spinn_packet_gen_init( spinn_packet_gen_t *g
 	g->pool               = pool;
 	g->position           = position;
 	g->system_size        = system_size;
+	g->allow_local        = allow_local;
 	g->on_packet_gen      = on_packet_gen;
 	g->on_packet_gen_data = on_packet_gen_data;
 	
@@ -277,6 +285,15 @@ spinn_packet_gen_init( spinn_packet_gen_t *g
 	                  );
 	
 	// Initially leave distribution values undefined.
+}
+
+
+void
+spinn_packet_gen_set_allow_local( spinn_packet_gen_t *g
+                                , bool                allow_local
+                                )
+{
+	g->allow_local = allow_local;
 }
 
 

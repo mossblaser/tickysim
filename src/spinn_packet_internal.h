@@ -66,6 +66,9 @@ struct spinn_packet_gen {
 	// Is the output buffer full (i.e. should sending a packet fail?)?
 	bool output_blocked;
 	
+	// Allow the generation of packets to the local host?
+	bool allow_local;
+	
 	// The spatial distribution to use when generating packets.
 	spinn_packet_gen_spatial_dist_t  spatial_dist;
 	

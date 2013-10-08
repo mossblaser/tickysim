@@ -61,6 +61,10 @@ configure_node_packet_gen(spinn_node_t *node)
 		fprintf(stderr, "Error: model.packet_generator.spatial.dist not recognised!\n");
 		exit(-1);
 	}
+	
+	// Set whether local messages can be sent
+	bool gen_allow_local = spinn_sim_config_lookup_bool(node->sim, "model.packet_generator.spatial.allow_local");
+	spinn_packet_gen_set_allow_local(&(node->packet_gen), gen_allow_local);
 }
 
 static void
@@ -223,6 +227,7 @@ spinn_node_init( spinn_sim_t   *sim
 	
 	// Packet generator
 	int gen_period = spinn_sim_config_lookup_int(sim, "model.packet_generator.period");
+	bool gen_allow_local = spinn_sim_config_lookup_bool(sim, "model.packet_generator.spatial.allow_local");
 	spinn_packet_gen_init( &(node->packet_gen)
 	                     , &(sim->scheduler)
 	                     , &(node->gen_buffer)
@@ -230,6 +235,7 @@ spinn_node_init( spinn_sim_t   *sim
 	                     , node->position
 	                     , sim->system_size
 	                     , gen_period
+	                     , gen_allow_local
 	                     , spinn_sim_stat_on_packet_gen, (void *)node
 	                     );
 
