@@ -28,6 +28,9 @@ spinn_sim_init(spinn_sim_t *sim, const char *config_filename, int argc, char *ar
 	// Load the configuration
 	spinn_sim_config_init(sim, config_filename, argc, argv);
 	
+	// Seed the simulation (default to the time as a seed)
+	srand(spinn_sim_config_lookup_int64_default(sim, "experiment.seed", time(NULL)));
+	
 	// Set up stat counting resources
 	spinn_sim_stat_open(sim);
 }

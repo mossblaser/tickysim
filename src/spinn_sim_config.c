@@ -254,6 +254,12 @@ DEFINE_CONFIG_WRAPPER( spinn_sim_config_lookup_int
                      , int
                      )
 
+DEFINE_CONFIG_WRAPPER( spinn_sim_config_lookup_int64
+                     , spinn_sim_config_lookup_int64_default
+                     , config_lookup_int64
+                     , long long int
+                     )
+
 DEFINE_CONFIG_WRAPPER( spinn_sim_config_lookup_float
                      , spinn_sim_config_lookup_float_default
                      , config_lookup_float
