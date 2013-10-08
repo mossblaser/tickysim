@@ -125,28 +125,28 @@ spinn_node_init( spinn_sim_t   *sim
 	int lvl1_buffer_length = spinn_sim_config_lookup_int(sim, "model.arbiter_tree.lvl1.buffer_length");
 	int lvl2_buffer_length = spinn_sim_config_lookup_int(sim, "model.arbiter_tree.lvl2.buffer_length");
 	buffer_init(&(node->arb_last_out), root_buffer_length);
-	buffer_init(&(node->arb_n_s_e_w_out), lvl1_buffer_length);
-	buffer_init(&(node->arb_ne_sw_l_out), lvl1_buffer_length);
-	buffer_init(&(node->arb_n_s_out), lvl2_buffer_length);
-	buffer_init(&(node->arb_e_w_out), lvl2_buffer_length);
-	buffer_init(&(node->arb_ne_sw_out), lvl2_buffer_length);
+	buffer_init(&(node->arb_e_ne_n_w_out), lvl1_buffer_length);
+	buffer_init(&(node->arb_sw_s_l_out), lvl1_buffer_length);
+	buffer_init(&(node->arb_e_ne_out), lvl2_buffer_length);
+	buffer_init(&(node->arb_n_w_out), lvl2_buffer_length);
+	buffer_init(&(node->arb_sw_s_out), lvl2_buffer_length);
 	
 	// Create arbiter tree which looks like this (with the levels indicated
 	// below):
 	//
 	//        |\                                         ,------ KEY --------,
-	//     N--| |_,--,_                                  |                   |
-	//     S--| | '--' |    |\                           |             |\    |
+	//     E--| |_,--,_                                  |                   |
+	//    NE--| | '--' |    |\                           |             |\    |
 	//        |/       `----| |_,--,_                    | Merger:  ---| |__ |
 	//                 ,----| | '--' |                   |          ---| |   |
 	//        |\       |    |/       |   |\              |             |/    |
-	//     E--| |_,--,_|             '---| |_,--,___     |                   |
+	//     N--| |_,--,_|             '---| |_,--,___     |                   |
 	//     W--| | '--'               ,---| | '--'        | Buffer:  __,--,__ |
 	//        |/            |\       |   |/              |            '--'   |
 	//                 ,----| |_,--,_|                   '-------------------'
 	//        |\       | ,--| | '--'
-	//    NE--| |_,--,_| |  |/
-	//    SW--| | '--'   |
+	//    SW--| |_,--,_| |  |/
+	//     S--| | '--'   |
 	//        |/         |
 	//                   |
 	//     L-------------'
@@ -158,8 +158,8 @@ spinn_node_init( spinn_sim_t   *sim
 	int lvl2_period = spinn_sim_config_lookup_int(sim, "model.arbiter_tree.lvl2.period");
 	
 	// Root
-	buffer_t *arb_last_inputs[] = { &(node->arb_n_s_e_w_out) 
-	                              , &(node->arb_ne_sw_l_out)
+	buffer_t *arb_last_inputs[] = { &(node->arb_e_ne_n_w_out) 
+	                              , &(node->arb_sw_s_l_out)
 	                              };
 	arbiter_init( &(node->arb_last)
 	            , &(sim->scheduler)
@@ -169,55 +169,55 @@ spinn_node_init( spinn_sim_t   *sim
 	            );
 	
 	// Lvl 1
-	buffer_t *arb_n_s_e_w_inputs[] = { &(node->arb_n_s_out) 
-	                                 , &(node->arb_e_w_out)
-	                                 };
-	arbiter_init( &(node->arb_n_s_e_w)
+	buffer_t *arb_e_ne_n_w_inputs[] = { &(node->arb_e_ne_out) 
+	                                  , &(node->arb_n_w_out)
+	                                  };
+	arbiter_init( &(node->arb_e_ne_n_w)
 	            , &(sim->scheduler)
 	            , lvl1_period
-	            , arb_n_s_e_w_inputs, 2
-	            , &(node->arb_n_s_e_w_out)
+	            , arb_e_ne_n_w_inputs, 2
+	            , &(node->arb_e_ne_n_w_out)
 	            );
 	
-	buffer_t *arb_ne_sw_l_inputs[] = { &(node->arb_ne_sw_out) 
-	                                 , &(node->gen_buffer)
-	                                 };
-	arbiter_init( &(node->arb_ne_sw_l)
+	buffer_t *arb_sw_s_l_inputs[] = { &(node->arb_sw_s_out) 
+	                                , &(node->gen_buffer)
+	                                };
+	arbiter_init( &(node->arb_sw_s_l)
 	            , &(sim->scheduler)
 	            , lvl1_period
-	            , arb_ne_sw_l_inputs, 2
-	            , &(node->arb_ne_sw_l_out)
+	            , arb_sw_s_l_inputs, 2
+	            , &(node->arb_sw_s_l_out)
 	            );
 	
 	// Lvl 2
-	buffer_t *arb_n_s_inputs[] = { &(node->input_buffers[SPINN_NORTH]) 
-	                             , &(node->input_buffers[SPINN_SOUTH])
-	                             };
-	arbiter_init( &(node->arb_n_s)
+	buffer_t *arb_e_ne_inputs[] = { &(node->input_buffers[SPINN_EAST]) 
+	                              , &(node->input_buffers[SPINN_NORTH_EAST])
+	                              };
+	arbiter_init( &(node->arb_e_ne)
 	            , &(sim->scheduler)
 	            , lvl2_period
-	            , arb_n_s_inputs, 2
-	            , &(node->arb_n_s_out)
+	            , arb_e_ne_inputs, 2
+	            , &(node->arb_e_ne_out)
 	            );
 	
-	buffer_t *arb_e_w_inputs[] = { &(node->input_buffers[SPINN_EAST]) 
+	buffer_t *arb_n_w_inputs[] = { &(node->input_buffers[SPINN_NORTH]) 
 	                             , &(node->input_buffers[SPINN_WEST])
 	                             };
-	arbiter_init( &(node->arb_e_w)
+	arbiter_init( &(node->arb_n_w)
 	            , &(sim->scheduler)
 	            , lvl2_period
-	            , arb_e_w_inputs, 2
-	            , &(node->arb_e_w_out)
+	            , arb_n_w_inputs, 2
+	            , &(node->arb_n_w_out)
 	            );
 	
-	buffer_t *arb_ne_sw_inputs[] = { &(node->input_buffers[SPINN_NORTH_EAST]) 
-	                               , &(node->input_buffers[SPINN_SOUTH_WEST])
-	                               };
-	arbiter_init( &(node->arb_ne_sw)
+	buffer_t *arb_sw_s_inputs[] = { &(node->input_buffers[SPINN_SOUTH_WEST]) 
+	                              , &(node->input_buffers[SPINN_SOUTH])
+	                              };
+	arbiter_init( &(node->arb_sw_s)
 	            , &(sim->scheduler)
 	            , lvl2_period
-	            , arb_ne_sw_inputs, 2
-	            , &(node->arb_ne_sw_out)
+	            , arb_sw_s_inputs, 2
+	            , &(node->arb_sw_s_out)
 	            );
 	
 	
@@ -284,11 +284,11 @@ spinn_node_destroy(spinn_node_t *node)
 	spinn_packet_gen_destroy(&(node->packet_gen));
 	spinn_packet_con_destroy(&(node->packet_con));
 	
-	arbiter_destroy(&(node->arb_n_s));
-	arbiter_destroy(&(node->arb_e_w));
-	arbiter_destroy(&(node->arb_ne_sw));
-	arbiter_destroy(&(node->arb_n_s_e_w));
-	arbiter_destroy(&(node->arb_ne_sw_l));
+	arbiter_destroy(&(node->arb_e_ne));
+	arbiter_destroy(&(node->arb_n_w));
+	arbiter_destroy(&(node->arb_sw_s));
+	arbiter_destroy(&(node->arb_e_ne_n_w));
+	arbiter_destroy(&(node->arb_sw_s_l));
 	arbiter_destroy(&(node->arb_last));
 	
 	for (int i = 0; i < 6; i++) {
@@ -297,11 +297,11 @@ spinn_node_destroy(spinn_node_t *node)
 	}
 	buffer_destroy(&(node->gen_buffer));
 	buffer_destroy(&(node->con_buffer));
-	buffer_destroy(&(node->arb_n_s_out));
-	buffer_destroy(&(node->arb_e_w_out));
-	buffer_destroy(&(node->arb_ne_sw_out));
-	buffer_destroy(&(node->arb_n_s_e_w_out));
-	buffer_destroy(&(node->arb_ne_sw_l_out));
+	buffer_destroy(&(node->arb_e_ne_out));
+	buffer_destroy(&(node->arb_n_w_out));
+	buffer_destroy(&(node->arb_sw_s_out));
+	buffer_destroy(&(node->arb_e_ne_n_w_out));
+	buffer_destroy(&(node->arb_sw_s_l_out));
 	buffer_destroy(&(node->arb_last_out));
 }
 
