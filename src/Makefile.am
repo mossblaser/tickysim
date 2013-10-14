@@ -25,4 +25,4 @@ tickysim_spinnaker_SOURCES += spinn_sim_stat.c spinn_sim_stat.h
 
 # Include libconfig in the build
 tickysim_spinnaker_CPPFLAGS = $(LIBCONFIG_CFLAGS)
-tickysim_spinnaker_LDFLAGS  = $(LIBCONFIG_LIBS)
+tickysim_spinnaker_LDADD  = $(LIBCONFIG_LIBS)
