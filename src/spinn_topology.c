@@ -95,3 +95,62 @@ spinn_shortest_vector( spinn_coord_t s
 	
 	return best_path;
 }
+
+
+void
+spinn_hexagon_init(spinn_hexagon_state_t *h, int num_layers)
+{
+	h->num_layers = num_layers;
+	h->layer = 0;
+	h->edge = 0;
+	h->i=0;
+	
+	// Start at the location of the first chip in the bottom-right of the central
+	// layer of the hexagon
+	h->pos.x = num_layers;
+	h->pos.y = num_layers-1;
+}
+
+// For use in spinn_hexagon. If still working on nodes along the given edge,
+// progress to the next edge, otherwise fall-through onto the next edge.
+#define SPINN_HEXAGON_CASE(edge_num, edge_length, dx,dy) \
+	case (edge_num): \
+		if (h->i < (edge_length)) { \
+			h->pos.x += (dx); \
+			h->pos.y += (dy); \
+			h->i++; \
+			return true; \
+		} else { \
+			h->i = 0; \
+			h->edge++; \
+		} /* Fall through to next edge. */
+
+bool
+spinn_hexagon(spinn_hexagon_state_t *h, spinn_coord_t *position)
+{
+	// Set the output position
+	position->x = h->pos.x;
+	position->y = h->pos.y;
+	
+	while (h->layer < h->num_layers) {
+		switch(h->edge) {
+			//                 Edge, Length,     dx, dy
+			SPINN_HEXAGON_CASE(0,    h->layer,    0, -1)
+			SPINN_HEXAGON_CASE(1,    h->layer,   -1, -1)
+			SPINN_HEXAGON_CASE(2,    h->layer+1, -1,  0)
+			SPINN_HEXAGON_CASE(3,    h->layer,    0,  1)
+			SPINN_HEXAGON_CASE(4,    h->layer+1,  1,  1)
+			SPINN_HEXAGON_CASE(5,    h->layer+1,  1,  0)
+			
+			// In the default case where we're actually not on any edge, move onto the
+			// next layer (the outer while loop will cause things to progress nicely)
+			default:
+				h->edge = 0;
+				h->layer++;
+				break;
+		}
+	}
+	
+	// We've reached the outside of the hexagon, stop iterating
+	return false;
+}

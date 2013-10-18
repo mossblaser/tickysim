@@ -8,10 +8,21 @@
 #define SPINN_TOPOLOGY_H
 
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include "config.h"
 
 #include "spinn.h"
+
+/**
+ * State of the spinn_hexagon() generator function. Must be initialised using
+ * spinn_hexagon_init().
+ */
+typedef struct spinn_hexagon_state spinn_hexagon_state_t;
+
+
+// Concrete definitions of the above types
+#include "spinn_topology_internal.h"
 
 
 /**
@@ -83,6 +94,37 @@ spinn_full_coord_t spinn_shortest_vector( spinn_coord_t source
                                         , spinn_coord_t target
                                         , spinn_coord_t system_size
                                         );
+
+/**
+ * Initialise the data structure used by spinn_hexagon() to construct a hexagon
+ * of the given number of layers. For example, the figure below shows what layer
+ * each node is on.
+ *
+ *         3---3---3
+ *        / \ / \ / \
+ *       3---2---2---3
+ *      / \ / \ / \ / \
+ *     3---2---1---2---3
+ *    / \ / \ / \ / \ / \
+ *   3---2---1---1---2---3
+ *    \ / \ / \ / \ / \ /
+ *     3---2---2---2---3
+ *      \ / \ / \ / \ /
+ *       3---3---3---3
+ */
+void spinn_hexagon_init(spinn_hexagon_state_t *h, int num_layers);
+
+
+/**
+ * generate the coordinates of positions on a hexagonal arrangement as used on
+ * spinnaker boards. sets the position in the spinn_coord_t indicated and
+ * returns false when no more positions exist.
+ *
+ * Coordinates will be positive with x and y ranging from 0 to (2*num_layers_)-1
+ * inclusive. The value of position when spinn_hexagon_init returns 0 is
+ * undefined.
+ */
+bool spinn_hexagon(spinn_hexagon_state_t *h, spinn_coord_t *position);
 
 #endif
 

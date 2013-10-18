@@ -169,6 +169,48 @@ START_TEST (test_dir_to_vector)
 }
 END_TEST
 
+#include<stdio.h>
+#define _ 0
+START_TEST (test_hexagon)
+{
+	const int radius = 4;
+	// The values in this array are up-side-down (for presentation purposes here).
+	// To access a point with a Y coordinate y, you must use 7-y.
+	int correct_answer[8][8] = {
+	   {_,  _,  _,  _,  1,  1,  1,  1},
+	//   \ / \ / \ / \ / \ / \ / \ / \.
+	     {_,  _,  _,  1,  1,  1,  1,  1},
+	//     \ / \ / \ / \ / \ / \ / \ / \.
+	       {_,  _,  1,  1,  1,  1,  1,  1},
+	//       \ / \ / \ / \ / \ / \ / \ / \.
+	         {_,  1,  1,  1,  1,  1,  1,  1},
+	//         \ / \ / \ / \ / \ / \ / \ / \.
+	           {1,  1,  1,  1,  1,  1,  1,  1},
+	//           \ / \ / \ / \ / \ / \ / \ / \.
+	             {1,  1,  1,  1,  1,  1,  1,  _},
+	//             \ / \ / \ / \ / \ / \ / \ / \.
+	               {1,  1,  1,  1,  1,  1,  _,  _},
+	//               \ / \ / \ / \ / \ / \ / \ / \.
+	                 {1,  1,  1,  1,  1,  _,  _,  _},
+	};
+	
+	spinn_hexagon_state_t h;
+	spinn_hexagon_init(&h, radius);
+	
+	// Check that every node produced was expected
+	spinn_coord_t p;
+	while (spinn_hexagon(&h, &p)) {
+		ck_assert_int_eq(correct_answer[(2*radius)-1-p.y][p.x], 1);
+		correct_answer[(2*radius)-1-p.y][p.x]--;
+	}
+	
+	// Check none were missed
+	for (int y = 0; y < 2*radius; y++)
+		for (int x = 0; x < 2*radius; x++)
+			ck_assert_int_eq(correct_answer[y][x], 0);
+}
+END_TEST
+
 
 Suite *
 make_spinn_topology_suite(void)
@@ -183,6 +225,7 @@ make_spinn_topology_suite(void)
 	tcase_add_test(tc_core, test_full_coord_minimise);
 	tcase_add_test(tc_core, test_shortest_vector);
 	tcase_add_test(tc_core, test_dir_to_vector);
+	tcase_add_test(tc_core, test_hexagon);
 	
 	// Add each test case to the suite
 	suite_add_tcase(s, tc_core);
