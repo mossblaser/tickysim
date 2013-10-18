@@ -120,9 +120,11 @@ spinn_node_init( spinn_sim_t   *sim
 	
 	// Create buffer for the local gen/con links
 	int gen_buffer_length = spinn_sim_config_lookup_int(sim, "model.packet_generator.buffer_length");
-	int con_buffer_length = spinn_sim_config_lookup_int(sim, "model.packet_consumer.buffer_length");
-	buffer_init(&(node->gen_buffer), gen_buffer_length);
-	buffer_init(&(node->con_buffer), con_buffer_length);
+	int con_pre_delay_buffer_length = spinn_sim_config_lookup_int(sim, "model.packet_consumer.pre_delay_buffer_length");
+	int con_post_delay_buffer_length = spinn_sim_config_lookup_int(sim, "model.packet_consumer.post_delay_buffer_length");
+	buffer_init(&(node->gen_buffer),            gen_buffer_length);
+	buffer_init(&(node->con_pre_delay_buffer),  con_pre_delay_buffer_length);
+	buffer_init(&(node->con_post_delay_buffer), con_post_delay_buffer_length);
 	
 	// Create buffers for the arbiter tree
 	int root_buffer_length = spinn_sim_config_lookup_int(sim, "model.arbiter_tree.root.buffer_length");
@@ -134,6 +136,16 @@ spinn_node_init( spinn_sim_t   *sim
 	buffer_init(&(node->arb_e_ne_out), lvl2_buffer_length);
 	buffer_init(&(node->arb_n_w_out), lvl2_buffer_length);
 	buffer_init(&(node->arb_sw_s_out), lvl2_buffer_length);
+	
+	// Create the consumer delay element
+	int con_delay = spinn_sim_config_lookup_int(sim, "model.packet_consumer.delay");
+	delay_init( &(node->con_delay)
+	          , &(sim->scheduler)
+	          , 1
+	          , con_delay
+	          , &(node->con_pre_delay_buffer)
+	          , &(node->con_post_delay_buffer)
+	          );
 	
 	// Create arbiter tree which looks like this (with the levels indicated
 	// below):
@@ -245,10 +257,10 @@ spinn_node_init( spinn_sim_t   *sim
 	int con_period = spinn_sim_config_lookup_int(sim, "model.packet_consumer.period");
 	spinn_packet_con_init( &(node->packet_con)
 	                     , &(sim->scheduler)
-	                     , &(node->con_buffer)
+	                     , &(node->con_post_delay_buffer)
 	                     , &(sim->pool)
 	                     , con_period
-		                   , spinn_sim_stat_on_packet_con, (void *)node
+	                     , spinn_sim_stat_on_packet_con, (void *)node
 	                     );
 	
 	configure_node_packet_con(node);
@@ -258,7 +270,7 @@ spinn_node_init( spinn_sim_t   *sim
 	for (int i = 0; i < 6; i++) {
 		output_buffers[i] = &(node->output_buffers[i]);
 	}
-	output_buffers[SPINN_LOCAL] = &(node->con_buffer);
+	output_buffers[SPINN_LOCAL] = &(node->con_pre_delay_buffer);
 	
 	// Set up the router
 	int router_period = spinn_sim_config_lookup_int(sim, "model.router.period");
@@ -302,13 +314,16 @@ spinn_node_destroy(spinn_node_t *node)
 		buffer_destroy(&(node->output_buffers[i]));
 	}
 	buffer_destroy(&(node->gen_buffer));
-	buffer_destroy(&(node->con_buffer));
+	buffer_destroy(&(node->con_pre_delay_buffer));
+	buffer_destroy(&(node->con_post_delay_buffer));
 	buffer_destroy(&(node->arb_e_ne_out));
 	buffer_destroy(&(node->arb_n_w_out));
 	buffer_destroy(&(node->arb_sw_s_out));
 	buffer_destroy(&(node->arb_e_ne_n_w_out));
 	buffer_destroy(&(node->arb_sw_s_l_out));
 	buffer_destroy(&(node->arb_last_out));
+	
+	delay_destroy(&(node->con_delay));
 }
 
 

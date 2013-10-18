@@ -59,9 +59,13 @@ struct spinn_node {
 	// (connected up by spinn_sim_init).
 	delay_t delays[6];
 	
+	// Delay element through which the consumer connects to the router
+	delay_t con_delay;
+	
 	// Packet generator/consumer buffers
 	buffer_t gen_buffer;
-	buffer_t con_buffer;
+	buffer_t con_pre_delay_buffer;
+	buffer_t con_post_delay_buffer;
 	
 	// Buffers in the arbiter tree
 	buffer_t arb_e_ne_out;
