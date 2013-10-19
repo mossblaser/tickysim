@@ -73,6 +73,13 @@ on_packet_gen(spinn_packet_t *p, void *data)
 	return (void *)4321;
 }
 
+bool
+dest_filter(const spinn_coord_t *dest, void *_allow_local)
+{
+	bool allow_local = (bool)_allow_local;
+	return !(!allow_local && dest->x == POSITION.x && dest->y == POSITION.y);
+}
+
 /******************************************************************************
  * Tests
  ******************************************************************************/
@@ -82,7 +89,9 @@ on_packet_gen(spinn_packet_t *p, void *data)
 	spinn_packet_gen_init( &g, &s, &b, &pool \
 	                     , POSITION, SYSTEM_SIZE \
 	                     , PERIOD \
-	                     , (allow_local) \
+	                     , true \
+	                     , dest_filter \
+	                     , (void *)(allow_local) \
 	                     , on_packet_gen, (void *)1234 \
 	                     )
 

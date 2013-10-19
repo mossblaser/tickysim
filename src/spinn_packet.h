@@ -57,12 +57,16 @@ typedef struct spinn_packet {
  * in a system of the specified size. Also resets all other fields to the values
  * expected of a new packet.
  *
+ * The use_wrap_around_links is a bool which sets whether the wrap around links
+ * should be used or not.
+ *
  * Note: Does not set the sent_time field.
  */
 void spinn_packet_init_dor( spinn_packet_t *packet
                           , spinn_coord_t   source
                           , spinn_coord_t   destination
                           , spinn_coord_t   system_size
+                          , bool            use_wrap_around_links
                           , void           *payload
                           );
 
@@ -141,8 +145,9 @@ void spinn_packet_pool_pfree(spinn_packet_pool_t *pool, spinn_packet_t *packet);
  *
  * @param period The period at which the packet generator will run.
  *
- * @param allow_local Should the generator be able to generate local packets,
- *                    i.e. to the same position as the generator?
+ * @param dest_filter A function which checks whether a given destination is
+ *                    allowed. If NULL, allow any destination.
+ * @param dest_filter_data A pointed to be passed to dest_filter.
  *
  * @param on_packet_gen Is a function called during the tock phase just after
  *                      packet creation but before it is sent. The value
@@ -159,21 +164,12 @@ void spinn_packet_gen_init( spinn_packet_gen_t  *gen
                           , spinn_coord_t        position
                           , spinn_coord_t        system_size
                           , ticks_t              period
-                          , bool                 allow_local
+                          , bool                 use_wrap_around_links
+                          , bool (*dest_filter)(const spinn_coord_t *proposed_destination, void *data)
+                          , void *dest_filter_data
                           , void *(*on_packet_gen)(spinn_packet_t *packet, void *data)
                           , void *on_packet_gen_data
                           );
-
-
-/**
- * Change whether local packets should be generated.
- *
- * This should be called outside of the simulation tick/tock phases for
- * deterministic behaviour.
- */
-void spinn_packet_gen_set_allow_local( spinn_packet_gen_t *packet_gen
-                                     , bool                allow_local
-                                     );
 
 
 /**

@@ -1,5 +1,5 @@
 # Run tests under valgrind set to report memory leaks.
-TESTS_ENVIRONMENT = valgrind -q --leak-check=full
+TESTS_ENVIRONMENT = CK_DEFAULT_TIMEOUT=0 valgrind -q --leak-check=full
 
 # The test programs to run when doing "make check"
 TESTS = check_check

@@ -28,6 +28,7 @@ spinn_packet_init_dor( spinn_packet_t *p
                      , spinn_coord_t   source
                      , spinn_coord_t   destination
                      , spinn_coord_t   system_size
+                     , bool            use_wrap_around_links
                      , void           *payload
                      )
 {
@@ -39,8 +40,27 @@ spinn_packet_init_dor( spinn_packet_t *p
 	p->num_hops     = 0;
 	p->num_emg_hops = 0;
 	
-	// Find the path between the src/dest
-	spinn_full_coord_t v = spinn_shortest_vector(source, destination, system_size);
+	// Calculate the vector to travel along
+	spinn_full_coord_t v;
+	if (use_wrap_around_links) {
+		// Find the path between the src/dest on a torus
+		v = spinn_shortest_vector(source, destination, system_size);
+		
+		// Randomize the direction to travel if reversing the direction of travel
+		// doesn't increase the distance
+		if (system_size.x%2 == 0 && v.x == system_size.x/2 && random() < (RAND_MAX/2)) v.x *= -1;
+		if (system_size.y%2 == 0 && v.y == system_size.y/2 && random() < (RAND_MAX/2)) v.y *= -1;
+		// XXX: Only randomize the z axis on square systems
+		if (system_size.x == system_size.y)
+			if (system_size.x%2 == 0 && v.z == system_size.x/2 && random() < (RAND_MAX/2)) v.z *= -1;
+	} else {
+		v = (spinn_full_coord_t){ destination.x - source.x
+		                        , destination.y - source.y
+		                        , 0
+		                        };
+		v = spinn_full_coord_minimise(v);
+
+	}
 	
 	// The starting direction is simply the direction the vector is pointing
 	     if (v.x < 0) p->direction = SPINN_WEST;
@@ -206,9 +226,9 @@ spinn_packet_gen_tock(void *g_)
 		return;
 	}
 	
-	// Determine the packet destination based on the current distribution. If
-	// allow_local is false, loop until a destination is chosen which is not the
-	// local node.
+	// Determine the packet destination based on the current distribution. If the
+	// filter rejects the packet, loop until a destination is chosen which
+	// satisfies it.
 	spinn_coord_t destination;
 	do {
 		switch (g->spatial_dist) {
@@ -232,13 +252,13 @@ spinn_packet_gen_tock(void *g_)
 				destination.y = (int)((((double)rand())/((double)RAND_MAX+1.0)) * g->system_size.y);
 				break;
 		}
-	} while (!g->allow_local
-	         && destination.x == g->position.x
-	         && destination.y == g->position.y);
+	} while (g->dest_filter != NULL
+	         && !g->dest_filter(&destination, g->dest_filter_data)
+	        );
 	
 	// Produce the packet
 	spinn_packet_t *p = spinn_packet_pool_palloc(g->pool);
-	spinn_packet_init_dor(p, g->position, destination, g->system_size, NULL);
+	spinn_packet_init_dor(p, g->position, destination, g->system_size, g->use_wrap_around_links, NULL);
 	p->sent_time = scheduler_get_ticks(g->scheduler);
 	
 	// Set up the payload and run the callback
@@ -263,20 +283,24 @@ spinn_packet_gen_init( spinn_packet_gen_t  *g
                      , spinn_coord_t        position
                      , spinn_coord_t        system_size
                      , ticks_t              period
-                     , bool                 allow_local
+                     , bool                 use_wrap_around_links
+                     , bool (*dest_filter)(const spinn_coord_t *proposed_destination, void *data)
+                     , void *dest_filter_data
                      , void *(*on_packet_gen)(spinn_packet_t *packet, void *data)
                      , void *on_packet_gen_data
                      )
 {
 	// Set up data-structure fields
-	g->scheduler          = s;
-	g->buffer             = b;
-	g->pool               = pool;
-	g->position           = position;
-	g->system_size        = system_size;
-	g->allow_local        = allow_local;
-	g->on_packet_gen      = on_packet_gen;
-	g->on_packet_gen_data = on_packet_gen_data;
+	g->scheduler             = s;
+	g->buffer                = b;
+	g->pool                  = pool;
+	g->position              = position;
+	g->system_size           = system_size;
+	g->use_wrap_around_links = use_wrap_around_links;
+	g->dest_filter           = dest_filter;
+	g->dest_filter_data      = dest_filter_data;
+	g->on_packet_gen         = on_packet_gen;
+	g->on_packet_gen_data    = on_packet_gen_data;
 	
 	// Set up tick/tock functions
 	scheduler_schedule( s, period
@@ -285,15 +309,6 @@ spinn_packet_gen_init( spinn_packet_gen_t  *g
 	                  );
 	
 	// Initially leave distribution values undefined.
-}
-
-
-void
-spinn_packet_gen_set_allow_local( spinn_packet_gen_t *g
-                                , bool                allow_local
-                                )
-{
-	g->allow_local = allow_local;
 }
 
 

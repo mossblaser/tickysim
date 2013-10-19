@@ -36,6 +36,9 @@ struct spinn_node {
 	// The position of the node in the system
 	spinn_coord_t position;
 	
+	// Is the node enabled?
+	bool enabled;
+	
 	// The source/sink for packets
 	spinn_packet_gen_t packet_gen;
 	spinn_packet_con_t packet_con;
@@ -101,8 +104,19 @@ struct spinn_sim {
 	// An array of all of the spinnaker nodes
 	spinn_node_t *nodes;
 	
-	// The size of the simulation
+	// The size of the simulation. This defines a rectangular array of nodes of
+	// which some may be inactive depending on the network topology selected.
 	spinn_coord_t system_size;
+	
+	// Should nodes be allowed to generate messages destined to themselves?
+	bool allow_local_packets;
+	
+	// Should packet generators check if a node is disabled before sending? True
+	// iff at least one entry in node_enable_mask is true.
+	bool some_nodes_disabled;
+	
+	// A mask of which nodes are enabled (and thus to which packets may be sent)
+	bool *node_enable_mask;
 	
 	// Statistic output files
 	FILE *stat_file_global_counters;

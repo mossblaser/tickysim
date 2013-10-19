@@ -61,10 +61,6 @@ configure_node_packet_gen(spinn_node_t *node)
 		fprintf(stderr, "Error: model.packet_generator.spatial.dist not recognised!\n");
 		exit(-1);
 	}
-	
-	// Set whether local messages can be sent
-	bool gen_allow_local = spinn_sim_config_lookup_bool(node->sim, "model.packet_generator.spatial.allow_local");
-	spinn_packet_gen_set_allow_local(&(node->packet_gen), gen_allow_local);
 }
 
 static void
@@ -96,19 +92,63 @@ configure_node_to_node_links(spinn_node_t *node)
 		delay_set_delay(&(node->delays[i]), delay_ticks);
 }
 
+static void
+configure_allow_local_packets(spinn_sim_t *sim)
+{
+	sim->allow_local_packets = spinn_sim_config_lookup_bool(sim, "model.packet_generator.spatial.allow_local");
+}
+
+/******************************************************************************
+ * Filtering for allowed node destinations
+ ******************************************************************************/
+
+bool
+dest_filter(const spinn_coord_t *proposed_destination, void *_node)
+{
+	spinn_node_t *node = (spinn_node_t *)_node;
+	
+	// Should packets going to the same node be allowed?
+	if (!node->sim->allow_local_packets
+	    && proposed_destination->x == node->position.x
+	    && proposed_destination->y == node->position.y
+	   ) {
+		return false;
+	}
+	
+	// Is the packet destined for a disabled node?
+	if (node->sim->some_nodes_disabled
+	    && !node->sim->node_enable_mask[(proposed_destination->y*node->sim->system_size.x)
+	                                    + proposed_destination->x]
+	   ) {
+		return false;
+	}
+	
+	// Otherwise, it must be fine!
+	return true;
+}
+
 /******************************************************************************
  * Node initialisation
  ******************************************************************************/
 
+/**
+ * Initialise a node (but not the links/delays to neighbours).
+ *
+ * If not enabled, the active components (e.g. the arbiters and router) are not
+ * initialised.
+ */
 static void
 spinn_node_init( spinn_sim_t   *sim
                , spinn_node_t  *node
                , spinn_coord_t  position
+               , bool           enabled
+               , bool           use_wrap_around_links
                )
 {
 	node->sim = sim;
 	
 	node->position = position;
+	node->enabled  = enabled;
 	
 	// Create node-to-node link buffers
 	int input_buffer_length = spinn_sim_config_lookup_int(sim, "model.node_to_node_links.input_buffer_length");
@@ -139,13 +179,14 @@ spinn_node_init( spinn_sim_t   *sim
 	
 	// Create the consumer delay element
 	int con_delay = spinn_sim_config_lookup_int(sim, "model.packet_consumer.delay");
-	delay_init( &(node->con_delay)
-	          , &(sim->scheduler)
-	          , 1
-	          , con_delay
-	          , &(node->con_pre_delay_buffer)
-	          , &(node->con_post_delay_buffer)
-	          );
+	if (node->enabled)
+		delay_init( &(node->con_delay)
+		          , &(sim->scheduler)
+		          , 1
+		          , con_delay
+		          , &(node->con_pre_delay_buffer)
+		          , &(node->con_post_delay_buffer)
+		          );
 	
 	// Create arbiter tree which looks like this (with the levels indicated
 	// below):
@@ -177,91 +218,99 @@ spinn_node_init( spinn_sim_t   *sim
 	buffer_t *arb_last_inputs[] = { &(node->arb_e_ne_n_w_out) 
 	                              , &(node->arb_sw_s_l_out)
 	                              };
-	arbiter_init( &(node->arb_last)
-	            , &(sim->scheduler)
-	            , root_period
-	            , arb_last_inputs, 2
-	            , &(node->arb_last_out)
-	            );
+	if (node->enabled)
+		arbiter_init( &(node->arb_last)
+		            , &(sim->scheduler)
+		            , root_period
+		            , arb_last_inputs, 2
+		            , &(node->arb_last_out)
+		            );
 	
 	// Lvl 1
 	buffer_t *arb_s_e_ne_w_inputs[] = { &(node->arb_e_ne_out) 
 	                                  , &(node->arb_n_w_out)
 	                                  };
-	arbiter_init( &(node->arb_s_e_ne_w)
-	            , &(sim->scheduler)
-	            , lvl1_period
-	            , arb_s_e_ne_w_inputs, 2
-	            , &(node->arb_e_ne_n_w_out)
-	            );
+	if (node->enabled)
+		arbiter_init( &(node->arb_s_e_ne_w)
+		            , &(sim->scheduler)
+		            , lvl1_period
+		            , arb_s_e_ne_w_inputs, 2
+		            , &(node->arb_e_ne_n_w_out)
+		            );
 	
 	buffer_t *arb_w_sw_l_inputs[] = { &(node->arb_sw_s_out) 
 	                                , &(node->gen_buffer)
 	                                };
-	arbiter_init( &(node->arb_w_sw_l)
-	            , &(sim->scheduler)
-	            , lvl1_period
-	            , arb_w_sw_l_inputs, 2
-	            , &(node->arb_sw_s_l_out)
-	            );
+	if (node->enabled)
+		arbiter_init( &(node->arb_w_sw_l)
+		            , &(sim->scheduler)
+		            , lvl1_period
+		            , arb_w_sw_l_inputs, 2
+		            , &(node->arb_sw_s_l_out)
+		            );
 	
 	// Lvl 2
 	buffer_t *arb_s_e_inputs[] = { &(node->input_buffers[SPINN_EAST]) 
 	                              , &(node->input_buffers[SPINN_NORTH_EAST])
 	                              };
-	arbiter_init( &(node->arb_s_e)
-	            , &(sim->scheduler)
-	            , lvl2_period
-	            , arb_s_e_inputs, 2
-	            , &(node->arb_e_ne_out)
-	            );
+	if (node->enabled)
+		arbiter_init( &(node->arb_s_e)
+		            , &(sim->scheduler)
+		            , lvl2_period
+		            , arb_s_e_inputs, 2
+		            , &(node->arb_e_ne_out)
+		            );
 	
 	buffer_t *arb_ne_w_inputs[] = { &(node->input_buffers[SPINN_NORTH]) 
 	                             , &(node->input_buffers[SPINN_WEST])
 	                             };
-	arbiter_init( &(node->arb_ne_w)
-	            , &(sim->scheduler)
-	            , lvl2_period
-	            , arb_ne_w_inputs, 2
-	            , &(node->arb_n_w_out)
-	            );
+	if (node->enabled)
+		arbiter_init( &(node->arb_ne_w)
+		            , &(sim->scheduler)
+		            , lvl2_period
+		            , arb_ne_w_inputs, 2
+		            , &(node->arb_n_w_out)
+		            );
 	
 	buffer_t *arb_w_sw_inputs[] = { &(node->input_buffers[SPINN_SOUTH_WEST]) 
 	                              , &(node->input_buffers[SPINN_SOUTH])
 	                              };
-	arbiter_init( &(node->arb_w_sw)
-	            , &(sim->scheduler)
-	            , lvl2_period
-	            , arb_w_sw_inputs, 2
-	            , &(node->arb_sw_s_out)
-	            );
+	if (node->enabled)
+		arbiter_init( &(node->arb_w_sw)
+		            , &(sim->scheduler)
+		            , lvl2_period
+		            , arb_w_sw_inputs, 2
+		            , &(node->arb_sw_s_out)
+		            );
 	
 	
 	// Packet generator
 	int gen_period = spinn_sim_config_lookup_int(sim, "model.packet_generator.period");
-	bool gen_allow_local = spinn_sim_config_lookup_bool(sim, "model.packet_generator.spatial.allow_local");
-	spinn_packet_gen_init( &(node->packet_gen)
-	                     , &(sim->scheduler)
-	                     , &(node->gen_buffer)
-	                     , &(sim->pool)
-	                     , node->position
-	                     , sim->system_size
-	                     , gen_period
-	                     , gen_allow_local
-	                     , spinn_sim_stat_on_packet_gen, (void *)node
-	                     );
+	if (node->enabled)
+		spinn_packet_gen_init( &(node->packet_gen)
+		                     , &(sim->scheduler)
+		                     , &(node->gen_buffer)
+		                     , &(sim->pool)
+		                     , node->position
+		                     , sim->system_size
+		                     , gen_period
+		                     , use_wrap_around_links
+		                     , dest_filter, (void *)node
+		                     , spinn_sim_stat_on_packet_gen, (void *)node
+		                     );
 
 	configure_node_packet_gen(node);
 	
 	// Packet consumer
 	int con_period = spinn_sim_config_lookup_int(sim, "model.packet_consumer.period");
-	spinn_packet_con_init( &(node->packet_con)
-	                     , &(sim->scheduler)
-	                     , &(node->con_post_delay_buffer)
-	                     , &(sim->pool)
-	                     , con_period
-	                     , spinn_sim_stat_on_packet_con, (void *)node
-	                     );
+	if (node->enabled)
+		spinn_packet_con_init( &(node->packet_con)
+		                     , &(sim->scheduler)
+		                     , &(node->con_post_delay_buffer)
+		                     , &(sim->pool)
+		                     , con_period
+		                     , spinn_sim_stat_on_packet_con, (void *)node
+		                     );
 	
 	configure_node_packet_con(node);
 	
@@ -278,36 +327,41 @@ spinn_node_init( spinn_sim_t   *sim
 	bool use_emg_routing = spinn_sim_config_lookup_bool(sim, "model.router.use_emergency_routing");
 	int first_timeout = spinn_sim_config_lookup_int(sim, "model.router.first_timeout");
 	int final_timeout = spinn_sim_config_lookup_int(sim, "model.router.final_timeout");
-	spinn_router_init( &(node->router)
-	                 , &(sim->scheduler)
-	                 , router_period
-	                 , router_pipeline_length
-	                 , &(node->arb_last_out)
-	                 , output_buffers
-	                 , node->position
-	                 , use_emg_routing
-	                 , first_timeout
-	                 , final_timeout
-	                 , NULL, NULL
-	                 , spinn_sim_stat_on_drop, (void *)node
-	                 );
+	if (node->enabled)
+		spinn_router_init( &(node->router)
+		                 , &(sim->scheduler)
+		                 , router_period
+		                 , router_pipeline_length
+		                 , &(node->arb_last_out)
+		                 , output_buffers
+		                 , node->position
+		                 , use_emg_routing
+		                 , first_timeout
+		                 , final_timeout
+		                 , NULL, NULL
+		                 , spinn_sim_stat_on_drop, (void *)node
+		                 );
 }
 
 
 void
 spinn_node_destroy(spinn_node_t *node)
 {
-	spinn_router_destroy(&(node->router));
-	
-	spinn_packet_gen_destroy(&(node->packet_gen));
-	spinn_packet_con_destroy(&(node->packet_con));
-	
-	arbiter_destroy(&(node->arb_s_e));
-	arbiter_destroy(&(node->arb_ne_w));
-	arbiter_destroy(&(node->arb_w_sw));
-	arbiter_destroy(&(node->arb_s_e_ne_w));
-	arbiter_destroy(&(node->arb_w_sw_l));
-	arbiter_destroy(&(node->arb_last));
+	if (node->enabled) {
+		spinn_router_destroy(&(node->router));
+		
+		spinn_packet_gen_destroy(&(node->packet_gen));
+		spinn_packet_con_destroy(&(node->packet_con));
+		
+		arbiter_destroy(&(node->arb_s_e));
+		arbiter_destroy(&(node->arb_ne_w));
+		arbiter_destroy(&(node->arb_w_sw));
+		arbiter_destroy(&(node->arb_s_e_ne_w));
+		arbiter_destroy(&(node->arb_w_sw_l));
+		arbiter_destroy(&(node->arb_last));
+		
+		delay_destroy(&(node->con_delay));
+	}
 	
 	for (int i = 0; i < 6; i++) {
 		buffer_destroy(&(node->input_buffers[i]));
@@ -322,8 +376,6 @@ spinn_node_destroy(spinn_node_t *node)
 	buffer_destroy(&(node->arb_e_ne_n_w_out));
 	buffer_destroy(&(node->arb_sw_s_l_out));
 	buffer_destroy(&(node->arb_last_out));
-	
-	delay_destroy(&(node->con_delay));
 }
 
 
@@ -337,9 +389,73 @@ spinn_sim_model_init(spinn_sim_t *sim)
 	scheduler_init(&(sim->scheduler));
 	spinn_packet_pool_init(&(sim->pool));
 	
-	// Get the size of the system
-	sim->system_size.x = spinn_sim_config_lookup_int(sim, "model.system_size.width");
-	sim->system_size.y = spinn_sim_config_lookup_int(sim, "model.system_size.height");
+	bool use_wrap_around_links;
+	
+	// Get the network topology information
+	const char *topology_name = spinn_sim_config_lookup_string(sim, "model.network.topology");
+	if (strcmp(topology_name, "torus") == 0) {
+		sim->system_size.x = spinn_sim_config_lookup_int(sim, "model.network.torus_width");
+		sim->system_size.y = spinn_sim_config_lookup_int(sim, "model.network.torus_height");
+		
+		use_wrap_around_links = true;
+	} else if (strcmp(topology_name, "mesh") == 0) {
+		sim->system_size.x = spinn_sim_config_lookup_int(sim, "model.network.mesh_width");
+		sim->system_size.y = spinn_sim_config_lookup_int(sim, "model.network.mesh_height");
+		
+		use_wrap_around_links = false;
+		
+		if (spinn_sim_config_lookup_bool(sim, "model.router.use_emergency_routing")) {
+			fprintf(stderr, "Emergency routing is not possible for mesh topologies.\n");
+			exit(-1);
+		}
+	} else if (strcmp(topology_name, "board_mesh") == 0) {
+		int mesh_radius = spinn_sim_config_lookup_int(sim, "model.network.board_mesh_radius");
+		sim->system_size.x = 2*mesh_radius;
+		sim->system_size.y = 2*mesh_radius;
+		
+		use_wrap_around_links = false;
+		
+		if (spinn_sim_config_lookup_bool(sim, "model.router.use_emergency_routing")) {
+			fprintf(stderr, "Emergency routing is not possible for mesh topologies.\n");
+			exit(-1);
+		}
+	} else {
+		fprintf( stderr
+		       , "Topology '%s' specified in model.network.topology does not exist."
+		       , topology_name
+		       );
+		exit(-1);
+	}
+	
+	// Should it be possible for a node to send a packet to itself?
+	configure_allow_local_packets(sim);
+	
+	// Set up the mask of which nodes should be enabled (specifically, when using
+	// a board_mesh topology, disable the nodes not in the mesh
+	sim->node_enable_mask = calloc( sim->system_size.x*sim->system_size.y
+	                         , sizeof(bool)
+	                         );
+	assert(sim->node_enable_mask != NULL);
+	if (strcmp(topology_name, "board_mesh") == 0) {
+		// Not all nodes are enabled in a board_mesh (i.e. those not in the board
+		sim->some_nodes_disabled = false;
+		
+		// To shut-up valgrind...
+		for (int i = 0; i < sim->system_size.x*sim->system_size.y; i++)
+			sim->node_enable_mask[i] = false;
+		
+		// Enable the nodes in the hexagon
+		spinn_coord_t p;
+		spinn_hexagon_state_t h;
+		spinn_hexagon_init(&h, spinn_sim_config_lookup_int(sim, "model.network.board_mesh_radius"));
+		while (spinn_hexagon(&h, &p))
+			sim->node_enable_mask[(p.y*sim->system_size.x) + p.x] = true;
+	} else {
+		// All nodes are enabled!
+		sim->some_nodes_disabled = false;
+		for (int i = 0; i < sim->system_size.x*sim->system_size.y; i++)
+			sim->node_enable_mask[i] = true;
+	}
 	
 	// Create the required number of nodes
 	sim->nodes = calloc( sim->system_size.x*sim->system_size.y
@@ -349,7 +465,12 @@ spinn_sim_model_init(spinn_sim_t *sim)
 	for (int y = 0; y < sim->system_size.y; y++) {
 		for (int x = 0; x < sim->system_size.x; x++) {
 			int i = (y * sim->system_size.x) + x;
-			spinn_node_init(sim, &(sim->nodes[i]), (spinn_coord_t){x,y});
+			spinn_node_init( sim
+			               , &(sim->nodes[i])
+			               , (spinn_coord_t){x,y}
+			               , sim->node_enable_mask[(y*sim->system_size.x) + x]
+			               , use_wrap_around_links
+			               );
 		}
 	}
 	
@@ -408,6 +529,7 @@ spinn_sim_model_destroy(spinn_sim_t *sim)
 		for (int j = 0; j < 6; j++)
 			delay_destroy(&(sim->nodes[i].delays[j]));
 	}
+	free(sim->node_enable_mask);
 	free(sim->nodes);
 }
 
@@ -426,6 +548,8 @@ spinn_sim_model_update(spinn_sim_t *sim)
 			configure_node_packet_gen(node);
 			configure_node_packet_con(node);
 			configure_node_to_node_links(node);
+			
+			configure_allow_local_packets(sim);
 		}
 	}
 }

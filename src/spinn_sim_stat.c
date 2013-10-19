@@ -417,12 +417,16 @@ spinn_sim_stat_end_sample_per_node_counters(spinn_sim_t *sim)
 		// Iterate over all nodes
 		for (int y = 0; y < sim->system_size.y; y++) {
 			for (int x = 0; x < sim->system_size.x; x++) {
+				spinn_node_t *node = sim->nodes + (x + (sim->system_size.x * y));
+				
+				// Skip disabled nodes
+				if (!node->enabled)
+					continue;
+				
 				fprint_standard_fields(sim, sim->stat_file_per_node_counters);
 				fprintf(sim->stat_file_per_node_counters, "\t%d\t%d"
 				       , x, y
 				       );
-				
-				spinn_node_t *node = sim->nodes + (x + (sim->system_size.x * y));
 				
 				if (per_node_packets_offered)
 					fprintf(sim->stat_file_per_node_counters, "\t%d", node->stat_packets_offered);

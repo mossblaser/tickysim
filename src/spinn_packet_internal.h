@@ -60,14 +60,18 @@ struct spinn_packet_gen {
 	spinn_coord_t position;
 	spinn_coord_t system_size;
 	
+	// Should wrap-around links be used?
+	bool use_wrap_around_links;
+	
 	// Should a packet be sent during the tock phase?
 	bool send_packet;
 	
 	// Is the output buffer full (i.e. should sending a packet fail?)?
 	bool output_blocked;
 	
-	// Allow the generation of packets to the local host?
-	bool allow_local;
+	// Callback to filter packet destinations
+	bool (*dest_filter)(const spinn_coord_t *proposed_destination, void *data);
+	void *dest_filter_data;
 	
 	// The spatial distribution to use when generating packets.
 	spinn_packet_gen_spatial_dist_t  spatial_dist;
