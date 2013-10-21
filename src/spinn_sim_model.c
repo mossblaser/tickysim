@@ -438,7 +438,7 @@ spinn_sim_model_init(spinn_sim_t *sim)
 	assert(sim->node_enable_mask != NULL);
 	if (strcmp(topology_name, "board_mesh") == 0) {
 		// Not all nodes are enabled in a board_mesh (i.e. those not in the board
-		sim->some_nodes_disabled = false;
+		sim->some_nodes_disabled = true;
 		
 		// To shut-up valgrind...
 		for (int i = 0; i < sim->system_size.x*sim->system_size.y; i++)
