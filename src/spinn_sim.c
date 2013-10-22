@@ -98,6 +98,12 @@ spinn_sim_run(spinn_sim_t *sim)
 {
 	int num_groups = spinn_sim_config_get_num_exp_groups(sim);
 	
+	// Find out what group/sample is to be simulated by this parallel run. If the
+	// value isn't set, these numbers will be set to -1. Otherwise they'll be set
+	// to the 0-indexed group/sample numbers.
+	int parallel_group  = spinn_sim_config_lookup_int(sim, "experiment.parallel.group")  - 1;
+	int parallel_sample = spinn_sim_config_lookup_int(sim, "experiment.parallel.sample") - 1;
+	
 	// Has the model been initialised?
 	bool model_initialised = false;
 	
@@ -111,6 +117,18 @@ spinn_sim_run(spinn_sim_t *sim)
 		// Set up the parameters ready for this group (this is done here as it may
 		// change e.g. the number of samples as an independent variable)
 		spinn_sim_config_set_exp_group(sim, sim->cur_group);
+		
+		// If only one group is to be run, skip the others. This is done after
+		// loading the group's configs because setting changes accumulate.
+		if (parallel_group >= 0 && sim->cur_group != parallel_group) {
+			// Check that cold_group is set
+			if (!cold_group) {
+				fprintf(stderr, "Error: experiment.parallel.group has been used but experiment.cold_group is not enabled.\n");
+				exit(-1);
+			} else {
+				continue;
+			}
+		}
 		
 		// Update all parameters which can be set while the simulation is hot
 		if (model_initialised) {
@@ -137,6 +155,16 @@ spinn_sim_run(spinn_sim_t *sim)
 		
 		// Perform samples for this group
 		for (sim->cur_sample = 0; sim->cur_sample < num_samples; sim->cur_sample++) {
+			// If only one sample is to be run, skip the others.
+			if (parallel_sample >= 0 && sim->cur_sample != parallel_sample) {
+				if (!cold_sample) {
+					fprintf(stderr, "Error: experiment.parallel.sample has been used but experiment.cold_sample is not enabled.\n");
+					exit(-1);
+				} else {
+					continue;
+				}
+			}
+			
 			// If cold_sample is in use then we should reset any running model
 			if (cold_sample && model_initialised) {
 				spinn_sim_model_destroy(sim);
