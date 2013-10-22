@@ -114,12 +114,7 @@ spinn_sim_run(spinn_sim_t *sim)
 	
 	// Perform experiments for each group
 	for (sim->cur_group = 0; sim->cur_group < num_groups; sim->cur_group++) {
-		// Set up the parameters ready for this group (this is done here as it may
-		// change e.g. the number of samples as an independent variable)
-		spinn_sim_config_set_exp_group(sim, sim->cur_group);
-		
-		// If only one group is to be run, skip the others. This is done after
-		// loading the group's configs because setting changes accumulate.
+		// If only one group is to be run, skip the others.
 		if (parallel_group >= 0 && sim->cur_group != parallel_group) {
 			// Check that cold_group is set
 			if (!cold_group) {
@@ -129,6 +124,10 @@ spinn_sim_run(spinn_sim_t *sim)
 				continue;
 			}
 		}
+		
+		// Set up the parameters ready for this group (this is done here as it may
+		// change e.g. the number of samples as an independent variable)
+		spinn_sim_config_set_exp_group(sim, sim->cur_group);
 		
 		// Update all parameters which can be set while the simulation is hot
 		if (model_initialised) {
