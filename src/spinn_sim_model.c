@@ -328,6 +328,8 @@ spinn_node_init( spinn_sim_t   *sim
 	int first_timeout = spinn_sim_config_lookup_int(sim, "model.router.first_timeout");
 	int final_timeout = spinn_sim_config_lookup_int(sim, "model.router.final_timeout");
 	if (node->enabled)
+		// Note: the spinn_sim_stat_on_drop callback is also responsible for freeing
+		// packets
 		spinn_router_init( &(node->router)
 		                 , &(sim->scheduler)
 		                 , router_period

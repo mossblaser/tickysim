@@ -143,6 +143,9 @@ spinn_sim_stat_on_drop(spinn_router_t *router, spinn_packet_t *packet, void *nod
 	
 	if (node->sim->stat_log_dropped_packets)
 		spinn_sim_stat_log_packet(false, packet, node);
+	
+	// Free the packet now we're done with it
+	spinn_packet_pool_pfree(&(node->sim->pool), packet);
 }
 
 
