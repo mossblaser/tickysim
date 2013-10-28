@@ -131,6 +131,13 @@ spinn_packet_pool_destroy(spinn_packet_pool_t *pool)
 }
 
 
+int
+spinn_packet_pool_get_num_packets(spinn_packet_pool_t *pool)
+{
+	return pool->num_packets;
+}
+
+
 spinn_packet_t *
 spinn_packet_pool_palloc(spinn_packet_pool_t *pool)
 {

@@ -115,6 +115,12 @@ void spinn_packet_pool_destroy(spinn_packet_pool_t *pool);
 
 
 /**
+ * Get the current size of the packet pool in packets.
+ */
+int spinn_packet_pool_get_num_packets(spinn_packet_pool_t *pool);
+
+
+/**
  * Get an uninitialised packet from the pool.
  */
 spinn_packet_t *spinn_packet_pool_palloc(spinn_packet_pool_t *pool);
