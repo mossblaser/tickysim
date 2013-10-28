@@ -186,7 +186,9 @@ spinn_sim_run(spinn_sim_t *sim)
 				fprintf(stderr, "  Warming up %s  "
 				              , model_hot ? "from hot " : "from cold"
 				              );
+				spinn_sim_stat_start_warmup(sim);
 				spinn_sim_run_ticks(sim, warmup_time);
+				spinn_sim_stat_end_warmup(sim);
 				fprintf(stderr, "100%%\n");
 				model_hot = true;
 			}

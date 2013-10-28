@@ -63,4 +63,16 @@ void spinn_sim_stat_start_sample(spinn_sim_t *sim);
 void spinn_sim_stat_end_sample(spinn_sim_t *sim);
 
 
+/**
+ * Start monitoring the simulation's warmup.
+ */
+void spinn_sim_stat_start_warmup(spinn_sim_t *sim);
+
+
+/**
+ * End the monitoring of a particular warmup period in the simulation.
+ */
+void spinn_sim_stat_end_warmup(spinn_sim_t *sim);
+
+
 #endif

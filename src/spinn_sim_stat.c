@@ -11,6 +11,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <string.h>
+#include <sys/time.h>
 
 #include "spinn_sim.h"
 #include "spinn_sim_stat.h"
@@ -290,6 +291,61 @@ spinn_sim_stat_open_packet_details(spinn_sim_t *sim)
 }
 
 
+void
+spinn_sim_stat_open_simulator(spinn_sim_t *sim)
+{
+	const char *basename   = "simulator.dat";
+	const char *result_dir = spinn_sim_config_lookup_string(sim, "measurements.results_directory");
+	
+	// A string long enough for the filename
+	char *filename = calloc(strlen(result_dir) + strlen(basename) + 1, sizeof(char));
+	assert(filename != NULL);
+	strcpy(filename, result_dir);
+	strcat(filename, basename);
+	
+	// What global stats are being counted?
+	bool warmup_ticks = spinn_sim_config_lookup_bool(sim,
+		"measurements.simulator.warmup_ticks");
+	bool warmup_duration = spinn_sim_config_lookup_bool(sim,
+		"measurements.simulator.warmup_duration");
+	bool warmup_packet_pool_size = spinn_sim_config_lookup_bool(sim,
+		"measurements.simulator.warmup_packet_pool_size");
+	bool sample_ticks = spinn_sim_config_lookup_bool(sim,
+		"measurements.simulator.sample_ticks");
+	bool sample_duration = spinn_sim_config_lookup_bool(sim,
+		"measurements.simulator.sample_duration");
+	bool sample_packet_pool_size = spinn_sim_config_lookup_bool(sim,
+		"measurements.simulator.sample_packet_pool_size");
+	
+	sim->stat_file_simulator = NULL;
+	
+	// Open the per-node counters file if some are being kept
+	if (warmup_duration || sample_duration ||
+			warmup_packet_pool_size || sample_packet_pool_size ||
+			warmup_ticks || sample_ticks) {
+		sim->stat_file_simulator = fopen(filename, "w");
+		if (sim->stat_file_simulator == NULL) {
+			fprintf(stderr, "Couldn't open %s for writing!\n", filename);
+			exit(-1);
+		}
+		
+		// Add the header
+		fprint_standard_fields_headers(sim, sim->stat_file_simulator);
+		if (warmup_ticks)            fprintf(sim->stat_file_simulator, "\twarmup_ticks");
+		if (warmup_duration)         fprintf(sim->stat_file_simulator, "\twarmup_duration");
+		if (warmup_packet_pool_size) fprintf(sim->stat_file_simulator, "\twarmup_packet_pool_size");
+		if (sample_ticks)            fprintf(sim->stat_file_simulator, "\tsample_ticks");
+		if (sample_duration)         fprintf(sim->stat_file_simulator, "\tsample_duration");
+		if (sample_packet_pool_size) fprintf(sim->stat_file_simulator, "\tsample_packet_pool_size");
+		fprintf(sim->stat_file_simulator, "\n");
+	}
+	
+	// Clean up
+	free(filename);
+}
+
+
+
 /******************************************************************************
  * Destroy Functions
  ******************************************************************************/
@@ -321,8 +377,71 @@ spinn_sim_stat_close_packet_details(spinn_sim_t *sim)
 }
 
 
+void
+spinn_sim_stat_close_simulator(spinn_sim_t *sim)
+{
+	if (sim->stat_file_simulator != NULL)
+		if (fclose(sim->stat_file_simulator) != 0)
+			fprintf(stderr, "Error closing simulator data file.\n");
+}
+
+
 /******************************************************************************
- * Start Functions
+ * Warmup Start Functions
+ ******************************************************************************/
+
+void
+spinn_sim_stat_start_warmup_simulator(spinn_sim_t *sim)
+{
+	// Do nothing...
+}
+
+
+/******************************************************************************
+ * Warmup End Functions
+ ******************************************************************************/
+
+void
+spinn_sim_stat_end_warmup_simulator(spinn_sim_t *sim)
+{
+	// What simulator warmup stats are being counted?
+	bool warmup_ticks = spinn_sim_config_lookup_bool(sim,
+		"measurements.simulator.warmup_ticks");
+	bool warmup_duration = spinn_sim_config_lookup_bool(sim,
+		"measurements.simulator.warmup_duration");
+	bool warmup_packet_pool_size = spinn_sim_config_lookup_bool(sim,
+		"measurements.simulator.warmup_packet_pool_size");
+	
+	
+	
+	// Add standard fields, if required
+	if (sim->stat_file_simulator != NULL)
+		fprint_standard_fields(sim, sim->stat_file_simulator);
+	
+	// Produce warmup stats
+	if (warmup_ticks || warmup_duration || warmup_packet_pool_size) {
+		if (warmup_ticks)
+			fprintf(sim->stat_file_simulator, "\t%d",
+			        scheduler_get_ticks(&(sim->scheduler)) - sim->stat_start_ticks);
+		
+		if (warmup_duration) {
+			struct timeval now;
+			gettimeofday(&now, NULL);
+			fprintf(sim->stat_file_simulator, "\t%0.3f",
+			        (double)(((now.tv_sec - sim->stat_start_time.tv_sec)*1000000L)
+			                + now.tv_usec - sim->stat_start_time.tv_usec)
+			        / 1000000.0);
+		}
+		
+		if (warmup_packet_pool_size) {
+			fprintf(sim->stat_file_simulator, "\t%d",
+			        spinn_packet_pool_get_num_packets(&(sim->pool)));
+		}
+	}
+}
+
+/******************************************************************************
+ * Sample Start Functions
  ******************************************************************************/
 
 void
@@ -352,8 +471,15 @@ spinn_sim_stat_start_sample_packet_details(spinn_sim_t *sim)
 }
 
 
+void
+spinn_sim_stat_start_sample_simulator(spinn_sim_t *sim)
+{
+	// Nothing to do
+}
+
+
 /******************************************************************************
- * End Functions
+ * Sample End Functions
  ******************************************************************************/
 
 void
@@ -454,6 +580,47 @@ spinn_sim_stat_end_sample_packet_details(spinn_sim_t *sim)
 }
 
 
+void
+spinn_sim_stat_end_sample_simulator(spinn_sim_t *sim)
+{
+	// What simulator sample stats are being counted?
+	bool sample_ticks = spinn_sim_config_lookup_bool(sim,
+		"measurements.simulator.sample_ticks");
+	bool sample_duration = spinn_sim_config_lookup_bool(sim,
+		"measurements.simulator.sample_duration");
+	bool sample_packet_pool_size = spinn_sim_config_lookup_bool(sim,
+		"measurements.simulator.sample_packet_pool_size");
+	
+	
+	// Produce sample stats
+	if (sample_ticks || sample_duration || sample_packet_pool_size) {
+		if (sample_ticks)
+			fprintf(sim->stat_file_simulator, "\t%d",
+			        scheduler_get_ticks(&(sim->scheduler)) - sim->stat_start_ticks);
+		
+		if (sample_duration) {
+			struct timeval now;
+			gettimeofday(&now, NULL);
+			fprintf(sim->stat_file_simulator, "\t%0.3f",
+			        (double)(((now.tv_sec - sim->stat_start_time.tv_sec)*1000000L)
+			                + now.tv_usec - sim->stat_start_time.tv_usec)
+			        / 1000000.0);
+		}
+		
+		if (sample_packet_pool_size) {
+			fprintf(sim->stat_file_simulator, "\t%d",
+			        spinn_packet_pool_get_num_packets(&(sim->pool)));
+		}
+	}
+	
+	
+	// Terminate with a newline if any field was enabled
+	if (sim->stat_file_simulator != NULL) {
+		fprintf(sim->stat_file_simulator, "\n");
+	}
+}
+
+
 
 /******************************************************************************
  * Public-facing functions
@@ -467,6 +634,7 @@ spinn_sim_stat_open(spinn_sim_t *sim)
 	spinn_sim_stat_open_global_counters(sim);
 	spinn_sim_stat_open_per_node_counters(sim);
 	spinn_sim_stat_open_packet_details(sim);
+	spinn_sim_stat_open_simulator(sim);
 }
 
 
@@ -476,6 +644,7 @@ spinn_sim_stat_close(spinn_sim_t *sim)
 	spinn_sim_stat_close_global_counters(sim);
 	spinn_sim_stat_close_per_node_counters(sim);
 	spinn_sim_stat_close_packet_details(sim);
+	spinn_sim_stat_close_simulator(sim);
 }
 
 
@@ -483,11 +652,13 @@ void
 spinn_sim_stat_start_sample(spinn_sim_t *sim)
 {
 	sim->stat_started = true;
+	gettimeofday(&(sim->stat_start_time), NULL);
 	sim->stat_start_ticks = scheduler_get_ticks(&(sim->scheduler));
 	
 	spinn_sim_stat_start_sample_global_counters(sim);
 	spinn_sim_stat_start_sample_per_node_counters(sim);
 	spinn_sim_stat_start_sample_packet_details(sim);
+	spinn_sim_stat_start_sample_simulator(sim);
 }
 
 
@@ -499,5 +670,23 @@ spinn_sim_stat_end_sample(spinn_sim_t *sim)
 	spinn_sim_stat_end_sample_global_counters(sim);
 	spinn_sim_stat_end_sample_per_node_counters(sim);
 	spinn_sim_stat_end_sample_packet_details(sim);
+	spinn_sim_stat_end_sample_simulator(sim);
+}
+
+
+void
+spinn_sim_stat_start_warmup(spinn_sim_t *sim)
+{
+	gettimeofday(&(sim->stat_start_time), NULL);
+	sim->stat_start_ticks = scheduler_get_ticks(&(sim->scheduler));
+	
+	spinn_sim_stat_start_warmup_simulator(sim);
+}
+
+
+void
+spinn_sim_stat_end_warmup(spinn_sim_t *sim)
+{
+	spinn_sim_stat_end_warmup_simulator(sim);
 }
 

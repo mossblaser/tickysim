@@ -10,6 +10,7 @@
 
 #include <libconfig.h>
 #include <stdio.h>
+#include <sys/time.h>
 
 #include "scheduler.h"
 #include "buffer.h"
@@ -122,10 +123,14 @@ struct spinn_sim {
 	FILE *stat_file_global_counters;
 	FILE *stat_file_per_node_counters;
 	FILE *stat_file_packet_details;
+	FILE *stat_file_simulator;
 	
 	// Flags as to whether packet arrivals will be monitored
 	bool stat_log_delivered_packets;
 	bool stat_log_dropped_packets;
+	
+	// The time at which the warmup/simulation started
+	struct timeval stat_start_time;
 	
 	// The time of the scheduler when the result collection started
 	ticks_t stat_start_ticks;
