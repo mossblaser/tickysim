@@ -5,7 +5,7 @@
 
 # Relative to packet root
 CONFIG_FILE="configs/mohsen.config"
-NUM_GROUPS=10
+NUM_GROUPS=20
 NUM_SAMPLES=1
 
 RESULTS_DIR="results"
@@ -13,7 +13,7 @@ RESULT_FILES="global_counters.dat per_node_counters.dat packet_details.dat"
 
 CLUSTER_HEAD_NODE=kilburn.cs.man.ac.uk
 
-PARALLEL_PROFILE=cluster32
+PARALLEL_PROFILE=cluster64
 
 echo ==================================
 echo Packaging tickysim for the cluster
