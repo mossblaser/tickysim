@@ -85,10 +85,15 @@ START_TEST (test_blocked_forwarding)
 		scheduler_tick_tock(&s);
 	ck_assert(!buffer_is_empty(&input));
 	
-	// Take something out of the output buffer and see if things arrive instantly
+	// Take something out of the output buffer and see if things arrive after a
+	// wire delay.
 	buffer_pop(&output);
-	for (int j = 0; j < PERIOD; j++)
-		scheduler_tick_tock(&s);
+	for (int i = 0; i < DELAY; i++) {
+		// Make sure it doesn't pop out early
+		ck_assert(!buffer_is_empty(&input));
+		for (int j = 0; j < PERIOD; j++)
+			scheduler_tick_tock(&s);
+	}
 	ck_assert(buffer_is_empty(&input));
 	ck_assert(buffer_is_full(&output));
 }

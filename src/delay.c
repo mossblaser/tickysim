@@ -36,14 +36,13 @@ delay_tick(void *d_)
 	
 	d->forward = false;
 	
-	// An input is ready!
-	if (!buffer_is_empty(d->input)) {
+	// The input and output buffers are both ready!
+	if (!buffer_is_empty(d->input) && !buffer_is_full(d->output)) {
 		if (d->current_delay > 0)
 			d->current_delay--;
 		
-		// If the value has been waiting long enough and the output buffer is free,
-		// forward it.
-		if (d->current_delay == 0 && !buffer_is_full(d->output)) {
+		// If the value has been waiting long enough forward it.
+		if (d->current_delay == 0) {
 			d->forward = true;
 			d->current_delay = d->delay;
 		}
