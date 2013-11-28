@@ -5,7 +5,7 @@
 
 # Relative to packet root
 CONFIG_FILE="configs/mohsen.config"
-NUM_GROUPS=10
+NUM_GROUPS=22
 NUM_SAMPLES=1
 
 RESULTS_DIR="results"
