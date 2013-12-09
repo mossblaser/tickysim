@@ -1,20 +1,50 @@
 #!/bin/bash
-
+#
 # Utility script which runs an experiment on a cluster of lab machines
 # This script is an absolute mess but very handy non-the-less.
+#
+# Usage:
+#   ./util/run_experiment.sh path/to/config/file.config
 
-# Relative to packet root
-CONFIG_FILE="configs/mohsen.config"
-NUM_GROUPS=19
-NUM_SAMPLES=1
+# Relative to project root
+CONFIG_FILE="$1"
+
+# Count the number of opening brackets in the "Groups" array to yield the number
+# of experimental groups. (Note: This is not foolproof. Do not allow fools to
+# operate this software.)
+NUM_GROUPS="$(( $( grep -A9999 "groups:" "$CONFIG_FILE" \
+                   | grep -m1 -B9999 ");" \
+                   | sed -re "s/#.*$//" \
+                   | tr -c -d "(" \
+                   | wc -c \
+                 ) - 1 ))"
+
+# Pull this value out of the config file. (Note: This is not foolproof. Do not
+# allow fools to operate this software.)
+NUM_SAMPLES="$(sed -nre "s/.*num_samples: *([0-9]+) *;.*/\1/p" < "$CONFIG_FILE")"
 
 RESULTS_DIR="results"
 RESULT_FILES="global_counters.dat per_node_counters.dat packet_details.dat simulator.dat"
 
 CLUSTER_HEAD_NODE=kilburn.cs.man.ac.uk
 
-PARALLEL_PROFILE=cluster32
+PARALLEL_PROFILE=cluster128
 
+echo =====================
+echo Experiment Parameters
+echo =====================
+echo
+echo Config file: $CONFIG_FILE
+echo
+echo Number of groups: $NUM_GROUPS
+echo Number of samples: $NUM_SAMPLES
+echo
+echo Results directory: $RESULTS_DIR
+echo Results Files: $RESULT_FILES
+echo
+echo Cluster head node: $CLUSTER_HEAD_NODE
+echo GNU Parallel Profile: $PARALLEL_PROFILE
+echo
 echo ==================================
 echo Packaging tickysim for the cluster
 echo ==================================
