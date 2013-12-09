@@ -28,7 +28,7 @@ RESULT_FILES="global_counters.dat per_node_counters.dat packet_details.dat simul
 
 CLUSTER_HEAD_NODE=kilburn.cs.man.ac.uk
 
-PARALLEL_PROFILE=cluster128
+PARALLEL_PROFILE=cluster64
 
 echo =====================
 echo Experiment Parameters
