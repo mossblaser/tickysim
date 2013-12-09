@@ -45,12 +45,12 @@ struct spinn_node {
 	spinn_packet_con_t packet_con;
 	
 	// The arbiters
-	arbiter_t arb_s_e;
-	arbiter_t arb_ne_w;
-	arbiter_t arb_w_sw;
+	arbiter_t arb_e_ne;
+	arbiter_t arb_n_w;
+	arbiter_t arb_sw_s;
 	
-	arbiter_t arb_s_e_ne_w;
-	arbiter_t arb_w_sw_l;
+	arbiter_t arb_e_ne_n_w;
+	arbiter_t arb_sw_s_l;
 	
 	arbiter_t arb_last;
 	
