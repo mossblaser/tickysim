@@ -48,6 +48,14 @@ def load_to_period(load, link_latency):
 	return int(round(link_latency/load))
 
 
+def period_to_load(period, link_latency):
+	"""
+	Given a specified period (e.g. 32), and the latency of sending a packet down a
+	link, computes the load as a proportion of the link bandwidth.
+	"""
+	return link_latency/period
+
+
 if __name__=="__main__":
 	import sys
 	
@@ -60,7 +68,17 @@ if __name__=="__main__":
 		for load in frange(start,end,inc):
 			experiments[load_to_period(load, link_latency)] = load
 	
-	for interval, load in sorted( experiments.iteritems()
-	                            , key=(lambda (i,l):l)
-	                            ):
-		print "(%3d) # Normalised load = %0.2f"%(interval, load)
+	out = ""
+	for num, (interval, load) in enumerate(sorted( experiments.iteritems()
+	                                             , key=(lambda (i,l):l)
+	                                             )):
+		comma = "        ," if num != 0 else "groups: ("
+		out += "%s (%3d) # Normalised load = %0.4f (~= %0.2f)\n"%(
+			comma,
+			interval,
+			period_to_load(interval, link_latency),
+			load,
+		)
+	
+	out += "        );"
+	print out
