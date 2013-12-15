@@ -522,6 +522,8 @@ spinn_sim_stat_end_sample_global_counters(spinn_sim_t *sim)
 			fprintf(sim->stat_file_global_counters, "\t%d", stat_packets_dropped);
 		
 		fprintf(sim->stat_file_global_counters, "\n");
+		
+		fflush(sim->stat_file_global_counters);
 	}
 }
 
@@ -569,6 +571,8 @@ spinn_sim_stat_end_sample_per_node_counters(spinn_sim_t *sim)
 				fprintf(sim->stat_file_per_node_counters, "\n");
 			}
 		}
+		
+		fflush(sim->stat_file_per_node_counters);
 	}
 }
 
@@ -577,6 +581,7 @@ void
 spinn_sim_stat_end_sample_packet_details(spinn_sim_t *sim)
 {
 	// Nothing to do
+	fflush(sim->stat_file_packet_details);
 }
 
 
@@ -617,6 +622,7 @@ spinn_sim_stat_end_sample_simulator(spinn_sim_t *sim)
 	// Terminate with a newline if any field was enabled
 	if (sim->stat_file_simulator != NULL) {
 		fprintf(sim->stat_file_simulator, "\n");
+		fflush(sim->stat_file_simulator);
 	}
 }
 
