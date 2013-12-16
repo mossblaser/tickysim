@@ -70,7 +70,7 @@ ssh $CLUSTER_HEAD_NODE "rm -rf tickysim-0.1/; \
                             measurements.results_directory=\"$RESULTS_DIR/g{1}_s{2}_\" \
                             experiment.parallel.group={1} \
                             experiment.parallel.sample={2} \
-                        && \
+                        ; \
                         echo ================= && \
                         echo Collating results && \
                         echo ================= && \
