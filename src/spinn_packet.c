@@ -262,7 +262,7 @@ spinn_packet_gen_tock(void *g_)
 			
 			case SPINN_GS_DIST_P2P:
 				destination.x = g->spatial_dist_data.p2p.target.x;
-				destination.y = g->spatial_dist_data.p2p.target.x;
+				destination.y = g->spatial_dist_data.p2p.target.y;
 				break;
 		}
 		
