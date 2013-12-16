@@ -214,6 +214,17 @@ void spinn_packet_gen_set_spatial_dist_uniform(spinn_packet_gen_t *packet_gen);
 
 
 /**
+ * Set up the packet generator to send packets to a single, specified target.
+ *
+ * This should be called outside of the simulation tick/tock phases for
+ * deterministic behaviour.
+ */
+void spinn_packet_gen_set_spatial_dist_p2p( spinn_packet_gen_t *packet_gen
+                                          , spinn_coord_t       target
+                                          );
+
+
+/**
  * Set up the packet generator to send packets to each node of the system in
  * turn, starting with the current node.
  *

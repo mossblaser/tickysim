@@ -235,7 +235,8 @@ spinn_packet_gen_tock(void *g_)
 	
 	// Determine the packet destination based on the current distribution. If the
 	// filter rejects the packet, loop until a destination is chosen which
-	// satisfies it.
+	// satisfies it. If the destination picked was (-1,-1) then don't generate a
+	// packet.
 	spinn_coord_t destination;
 	do {
 		switch (g->spatial_dist) {
@@ -258,7 +259,16 @@ spinn_packet_gen_tock(void *g_)
 				destination.x = (int)((((double)rand())/((double)RAND_MAX+1.0)) * g->system_size.x);
 				destination.y = (int)((((double)rand())/((double)RAND_MAX+1.0)) * g->system_size.y);
 				break;
+			
+			case SPINN_GS_DIST_P2P:
+				destination.x = g->spatial_dist_data.p2p.target.x;
+				destination.y = g->spatial_dist_data.p2p.target.x;
+				break;
 		}
+		
+		// If destination is (-1,-1) then exit early and don't generate a packet
+		if (destination.x == -1 && destination.y == -1)
+			return;
 	} while (g->dest_filter != NULL
 	         && !g->dest_filter(&destination, g->dest_filter_data)
 	        );
@@ -344,6 +354,17 @@ void
 spinn_packet_gen_set_spatial_dist_uniform(spinn_packet_gen_t *g)
 {
 	g->spatial_dist = SPINN_GS_DIST_UNIFORM;
+}
+
+
+void
+spinn_packet_gen_set_spatial_dist_p2p( spinn_packet_gen_t *g
+                                     , spinn_coord_t       target
+                                     )
+{
+	g->spatial_dist = SPINN_GS_DIST_P2P;
+	g->spatial_dist_data.p2p.target.x = target.x;
+	g->spatial_dist_data.p2p.target.y = target.y;
 }
 
 

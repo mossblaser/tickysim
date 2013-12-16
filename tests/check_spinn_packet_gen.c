@@ -31,6 +31,8 @@
 
 #define INTERVAL 7
 
+#define REPEATS 10
+
 scheduler_t s;
 buffer_t b;
 spinn_packet_pool_t pool;
@@ -100,6 +102,7 @@ dest_filter(const spinn_coord_t *dest, void *_allow_local)
 
 #define SET_GEN_CYCLIC() spinn_packet_gen_set_spatial_dist_cyclic(&g)
 #define SET_GEN_UNIFORM() spinn_packet_gen_set_spatial_dist_uniform(&g)
+#define SET_GEN_P2P(target) spinn_packet_gen_set_spatial_dist_p2p(&g,(target))
 
 
 /**
@@ -232,6 +235,50 @@ START_TEST (test_cyclic_dist)
 }
 END_TEST
 
+/**
+ * Ensure that the p2p distribution sends a packets to only the specified node
+ * or none at all if the specified node is (-1,-1).
+ */
+START_TEST (test_p2p_dist)
+{
+	bool null_destination = _i != 0;
+	INIT_GEN(true); SET_GEN_BERNOULLI(1.0);
+	if (!null_destination)
+		SET_GEN_P2P(((spinn_coord_t){0,0}));
+	else
+		SET_GEN_P2P(((spinn_coord_t){-1,-1}));
+	
+	// Run to allow REPEATS packets to be generated.
+	for (int i = 0; i < REPEATS; i++) {
+		for (int j = 0; j < PERIOD; j++)
+			scheduler_tick_tock(&s);
+		
+		if (!null_destination) {
+			// A packet should have arrived, note its posiiton
+			ck_assert(!buffer_is_empty(&b));
+			spinn_packet_t *p = (spinn_packet_t *)buffer_pop(&b);
+			ck_assert_int_eq(p->destination.x, 0);
+			ck_assert_int_eq(p->destination.y, 0);
+			
+			// Check the payload added by the callback is correct
+			ck_assert_int_eq((int)p->payload, 4321);
+			
+			// Free the packet resource
+			spinn_packet_pool_pfree(&pool, p);
+		} else {
+			// No packets should have been generated
+			ck_assert(buffer_is_empty(&b));
+		}
+	}
+	
+	if (!null_destination)
+		ck_assert_int_eq(packets_sent, REPEATS);
+	else
+		ck_assert_int_eq(packets_sent, 0);
+	ck_assert_int_eq(packets_blocked, 0);
+}
+END_TEST
+
 
 /**
  * Ensure with a periodic interval, packets are sent at the correct times when
@@ -334,6 +381,7 @@ make_spinn_packet_gen_suite(void)
 	tcase_add_loop_test(tc_core, test_periodic_free, 0, 2);
 	tcase_add_loop_test(tc_core, test_periodic_blocked, 0, 2);
 	tcase_add_loop_test(tc_core, test_cyclic_dist, 0, 2);
+	tcase_add_loop_test(tc_core, test_p2p_dist, 0, 2);
 	
 	// Add each test case to the suite
 	suite_add_tcase(s, tc_core);

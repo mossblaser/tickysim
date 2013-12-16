@@ -32,6 +32,127 @@
  ******************************************************************************/
 
 static void
+load_packet_gen_p2p_dist(spinn_sim_t *sim)
+{
+	// Don't do anything if we're not using this distribution.
+	const char *gen_spatial_dist
+		= spinn_sim_config_lookup_string(sim, "model.packet_generator.spatial.dist");
+	if (strcmp(gen_spatial_dist, "p2p") != 0)
+		return;
+	
+	// Default targets to -1, -1 if not specified in the list
+	for (int x = 0; x < sim->system_size.x; x++)
+		for (int y = 0; y < sim->system_size.y; y++)
+			sim->node_packet_gen_p2p_target[(y*sim->system_size.x) + x] = (spinn_coord_t){-1, -1};
+	
+	// Load the list of p2p targets
+	config_setting_t *p2p_pair_list = config_lookup(&(sim->config), "model.packet_generator.spatial.p2p_pairs");
+	if (p2p_pair_list == NULL || config_setting_type(p2p_pair_list) != CONFIG_TYPE_LIST) {
+		fprintf(stderr, "Expected a list of (source,destination) pairs in 'model.packet_generator.spatial.p2p_pairs'.\n");
+		exit(-1);
+	}
+	
+	// Iterate over the pairs
+	for (int i = 0; i < config_setting_length(p2p_pair_list); i++) {
+		config_setting_t *p2p_pair = config_setting_get_elem(p2p_pair_list, i);
+		if (p2p_pair == NULL ||
+		    config_setting_type(p2p_pair) != CONFIG_TYPE_LIST ||
+		    config_setting_length(p2p_pair) != 2
+		    ) {
+			fprintf(stderr, "Expected a (source,destination) pair as item %d of 'model.packet_generator.spatial.p2p_pairs'.\n"
+			              , i);
+			exit(-1);
+		}
+		
+		config_setting_t *source_x_y = config_setting_get_elem(p2p_pair, 0);
+		config_setting_t *target_x_y = config_setting_get_elem(p2p_pair, 1);
+		
+		// Check the (x,y) pairs are correct
+		if (source_x_y == NULL || target_x_y == NULL ||
+		    config_setting_type(source_x_y) != CONFIG_TYPE_LIST ||
+		    config_setting_type(target_x_y) != CONFIG_TYPE_LIST ||
+		    config_setting_length(source_x_y) != 2 ||
+		    config_setting_length(target_x_y) != 2
+		    ) {
+			fprintf(stderr, "Expected source and destination of item %d in 'model.packet_generator.spatial.p2p_pairs' to be of the form (x,y).\n"
+			              , i);
+			exit(-1);
+		}
+		
+		// Check that the x and y values are integers
+		config_setting_t *source_x = config_setting_get_elem(source_x_y, 0);
+		config_setting_t *source_y = config_setting_get_elem(source_x_y, 1);
+		config_setting_t *target_x = config_setting_get_elem(target_x_y, 0);
+		config_setting_t *target_y = config_setting_get_elem(target_x_y, 1);
+		
+		if (source_x == NULL || source_y == NULL || target_x == NULL || target_y == NULL ||
+		    config_setting_type(source_x) != CONFIG_TYPE_INT ||
+		    config_setting_type(source_y) != CONFIG_TYPE_INT ||
+		    config_setting_type(target_x) != CONFIG_TYPE_INT ||
+		    config_setting_type(target_y) != CONFIG_TYPE_INT
+		    ) {
+			fprintf(stderr, "Expected source and destination of item %d in 'model.packet_generator.spatial.p2p_pairs' to be of the form (x,y) where x and y are integers.\n"
+			              , i);
+			exit(-1);
+		}
+		
+		spinn_coord_t source_entry;
+		spinn_coord_t target_entry;
+		source_entry.x = config_setting_get_int(source_x);
+		source_entry.y = config_setting_get_int(source_y);
+		target_entry.x = config_setting_get_int(target_x);
+		target_entry.y = config_setting_get_int(target_y);
+		
+		// Check the coordinates are within the machine
+		if (source_entry.x < 0 || source_entry.x >= sim->system_size.x ||
+		    source_entry.y < 0 || source_entry.y >= sim->system_size.y ||
+		    target_entry.x < 0 || target_entry.x >= sim->system_size.x ||
+		    target_entry.y < 0 || target_entry.y >= sim->system_size.y ||
+		    ( sim->some_nodes_disabled &&
+		      (
+		        !sim->node_enable_mask[ (source_entry.y*sim->system_size.x)
+	                                  + source_entry.x ] ||
+		        !sim->node_enable_mask[ (target_entry.y*sim->system_size.x)
+	                                  + target_entry.x ]
+		      )
+		    )
+		   ) {
+			fprintf(stderr, "Expected source and destination of item %d in 'model.packet_generator.spatial.p2p_pairs' to be within the size of the machine.\n"
+			              , i);
+			exit(-1);
+		}
+		
+		// Check if we're allowed to self-loop if we're doing that
+		if (source_entry.x == target_entry.x &&
+		    source_entry.y == target_entry.y &&
+		    !sim->allow_local_packets
+		   ) {
+			fprintf(stderr, "Requested packets are sent locally in item %d in 'model.packet_generator.spatial.p2p_pairs' but 'model.packet_generator.spatial.allow_local' is False.\n"
+			              , i);
+			exit(-1);
+		}
+		
+		// If we've not already found our source and target, check to see if this is
+		// a match
+		int source_index = (source_entry.y*sim->system_size.x) + source_entry.x;
+		if (sim->node_packet_gen_p2p_target[source_index].x != -1 || 
+		    sim->node_packet_gen_p2p_target[source_index].y != -1
+		   ) {
+			fprintf(stderr, "Target for (%d,%d) already defined. Defined again in item %d in 'model.packet_generator.spatial.p2p_pairs'.\n"
+			              , source_entry.x
+			              , source_entry.y
+			              , i);
+			exit(-1);
+		} else {
+			// Define the target
+			sim->node_packet_gen_p2p_target[source_index].x = target_entry.x; 
+			sim->node_packet_gen_p2p_target[source_index].y = target_entry.y; 
+		}
+	}
+}
+
+
+static void
 configure_node_packet_gen(spinn_node_t *node)
 {
 	// Set temporal distribution
@@ -57,11 +178,17 @@ configure_node_packet_gen(spinn_node_t *node)
 		spinn_packet_gen_set_spatial_dist_uniform(&(node->packet_gen));
 	} else if (strcmp(gen_spatial_dist, "cyclic") == 0) {
 		spinn_packet_gen_set_spatial_dist_cyclic(&(node->packet_gen));
+	} else if (strcmp(gen_spatial_dist, "p2p") == 0) {
+		spinn_coord_t target;
+		target = node->sim->node_packet_gen_p2p_target[(node->position.y*node->sim->system_size.x)
+		                                               + node->position.x];
+		spinn_packet_gen_set_spatial_dist_p2p(&(node->packet_gen), target);
 	} else {
 		fprintf(stderr, "Error: model.packet_generator.spatial.dist not recognised!\n");
 		exit(-1);
 	}
 }
+
 
 static void
 configure_node_packet_con(spinn_node_t *node)
@@ -443,6 +570,13 @@ spinn_sim_model_init(spinn_sim_t *sim)
 			sim->node_enable_mask[i] = true;
 	}
 	
+	// Set up the array of packet generator p2p destinations
+	sim->node_packet_gen_p2p_target = calloc( sim->system_size.x*sim->system_size.y
+	                                        , sizeof(spinn_coord_t)
+	                                        );
+	assert(sim->node_packet_gen_p2p_target != NULL);
+	load_packet_gen_p2p_dist(sim);
+	
 	// Create the required number of nodes
 	sim->nodes = calloc( sim->system_size.x*sim->system_size.y
 	                   , sizeof(spinn_node_t)
@@ -516,6 +650,7 @@ spinn_sim_model_destroy(spinn_sim_t *sim)
 			delay_destroy(&(sim->nodes[i].delays[j]));
 	}
 	free(sim->node_enable_mask);
+	free(sim->node_packet_gen_p2p_target);
 	free(sim->nodes);
 }
 
@@ -531,11 +666,13 @@ spinn_sim_model_update(spinn_sim_t *sim)
 		for (int x = 0; x < sim->system_size.x; x++) {
 			spinn_node_t *node = &(sim->nodes[(y * sim->system_size.x) + x]);
 			
+			configure_allow_local_packets(sim);
+			
+			load_packet_gen_p2p_dist(sim);
+			
 			configure_node_packet_gen(node);
 			configure_node_packet_con(node);
 			configure_node_to_node_links(node);
-			
-			configure_allow_local_packets(sim);
 		}
 	}
 }

@@ -36,6 +36,7 @@ struct spinn_packet_pool {
 typedef enum spinn_packet_gen_spatial_dist {
 	SPINN_GS_DIST_CYCLIC,
 	SPINN_GS_DIST_UNIFORM,
+	SPINN_GS_DIST_P2P,
 } spinn_packet_gen_spatial_dist_t;
 
 
@@ -87,6 +88,11 @@ struct spinn_packet_gen {
 		struct {
 			spinn_coord_t next_dest;
 		} cyclic;
+		
+		// P2P packet generator data
+		struct {
+			spinn_coord_t target;
+		} p2p;
 		
 	} spatial_dist_data;
 	

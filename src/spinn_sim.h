@@ -115,6 +115,10 @@ struct spinn_sim {
 	// A mask of which nodes are enabled (and thus to which packets may be sent)
 	bool *node_enable_mask;
 	
+	// An array of p2p targets to be used by packet generators using the P2P
+	// spatial distribution
+	spinn_coord_t *node_packet_gen_p2p_target;
+	
 	// Statistic output files
 	FILE *stat_file_global_counters;
 	FILE *stat_file_per_node_counters;
