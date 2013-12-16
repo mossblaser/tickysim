@@ -45,12 +45,12 @@ struct spinn_node {
 	spinn_packet_con_t packet_con;
 	
 	// The arbiters
-	arbiter_t arb_e_ne;
-	arbiter_t arb_n_w;
-	arbiter_t arb_sw_s;
+	arbiter_t arb_w_s;
+	arbiter_t arb_ne_n;
+	arbiter_t arb_w_sw;
 	
-	arbiter_t arb_e_ne_n_w;
-	arbiter_t arb_sw_s_l;
+	arbiter_t arb_w_s_ne_n;
+	arbiter_t arb_w_sw_l;
 	
 	arbiter_t arb_last;
 	
@@ -68,12 +68,12 @@ struct spinn_node {
 	buffer_t con_buffer;
 	
 	// Buffers in the arbiter tree
-	buffer_t arb_e_ne_out;
-	buffer_t arb_n_w_out;
-	buffer_t arb_sw_s_out;
+	buffer_t arb_w_s_out;
+	buffer_t arb_ne_n_out;
+	buffer_t arb_w_sw_out;
 	
-	buffer_t arb_e_ne_n_w_out;
-	buffer_t arb_sw_s_l_out;
+	buffer_t arb_w_s_ne_n_out;
+	buffer_t arb_w_sw_l_out;
 	
 	buffer_t arb_last_out;
 	
