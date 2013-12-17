@@ -82,6 +82,7 @@ struct spinn_node {
 	int stat_packets_accepted;
 	int stat_packets_arrived;
 	int stat_packets_dropped;
+	int stat_packets_forwarded;
 };
 
 

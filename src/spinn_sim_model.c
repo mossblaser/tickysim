@@ -454,7 +454,7 @@ spinn_node_init( spinn_sim_t   *sim
 		                 , use_emg_routing
 		                 , first_timeout
 		                 , final_timeout
-		                 , NULL, NULL
+		                 , spinn_sim_stat_on_forward, (void *)node
 		                 , spinn_sim_stat_on_drop, (void *)node
 		                 );
 }

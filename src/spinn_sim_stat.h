@@ -31,6 +31,12 @@ void spinn_sim_stat_on_packet_con(spinn_packet_t *packet, void *node);
  */
 void spinn_sim_stat_on_drop(spinn_router_t *router, spinn_packet_t *packet, void *node);
 
+/**
+ * Callback for the router's on-forward event. Expects a reference to the
+ * simulation node as the data argument.
+ */
+void spinn_sim_stat_on_forward(spinn_router_t *router, spinn_packet_t *packet, void *node);
+
 
 /******************************************************************************
  * Stat management functions

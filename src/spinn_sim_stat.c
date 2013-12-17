@@ -150,6 +150,15 @@ spinn_sim_stat_on_drop(spinn_router_t *router, spinn_packet_t *packet, void *nod
 }
 
 
+void
+spinn_sim_stat_on_forward(spinn_router_t *router, spinn_packet_t *packet, void *node_)
+{
+	spinn_node_t *node = (spinn_node_t *)node_;
+	
+	node->stat_packets_forwarded++;
+}
+
+
 /******************************************************************************
  * Initialisation Functions
  ******************************************************************************/
@@ -175,12 +184,15 @@ spinn_sim_stat_open_global_counters(spinn_sim_t *sim)
 		"measurements.global_counters.packets_arrived");
 	bool glbl_packets_dropped = spinn_sim_config_lookup_bool(sim,
 		"measurements.global_counters.packets_dropped");
+	bool glbl_packets_forwarded = spinn_sim_config_lookup_bool(sim,
+		"measurements.global_counters.packets_forwarded");
 	
 	sim->stat_file_global_counters = NULL;
 	
 	// Open the global counters file if some are being kept
 	if (glbl_packets_offered || glbl_packets_accepted ||
-			glbl_packets_arrived || glbl_packets_dropped) {
+	    glbl_packets_arrived || glbl_packets_dropped ||
+	    glbl_packets_forwarded) {
 		sim->stat_file_global_counters = fopen(filename, "w");
 		if (sim->stat_file_global_counters == NULL) {
 			fprintf(stderr, "Couldn't open %s for writing!\n", filename);
@@ -193,6 +205,7 @@ spinn_sim_stat_open_global_counters(spinn_sim_t *sim)
 		if (glbl_packets_accepted) fprintf(sim->stat_file_global_counters, "\tpackets_accepted");
 		if (glbl_packets_arrived)  fprintf(sim->stat_file_global_counters, "\tpackets_arrived");
 		if (glbl_packets_dropped)  fprintf(sim->stat_file_global_counters, "\tpackets_dropped");
+		if (glbl_packets_forwarded)fprintf(sim->stat_file_global_counters, "\tpackets_forwarded");
 		fprintf(sim->stat_file_global_counters, "\n");
 	}
 	
@@ -222,12 +235,15 @@ spinn_sim_stat_open_per_node_counters(spinn_sim_t *sim)
 		"measurements.per_node_counters.packets_arrived");
 	bool per_node_packets_dropped = spinn_sim_config_lookup_bool(sim,
 		"measurements.per_node_counters.packets_dropped");
+	bool per_node_packets_forwarded = spinn_sim_config_lookup_bool(sim,
+		"measurements.per_node_counters.packets_forwarded");
 	
 	sim->stat_file_per_node_counters = NULL;
 	
 	// Open the per-node counters file if some are being kept
 	if (per_node_packets_offered || per_node_packets_accepted ||
-			per_node_packets_arrived || per_node_packets_dropped) {
+	    per_node_packets_arrived || per_node_packets_dropped ||
+	    per_node_packets_forwarded) {
 		sim->stat_file_per_node_counters = fopen(filename, "w");
 		if (sim->stat_file_per_node_counters == NULL) {
 			fprintf(stderr, "Couldn't open %s for writing!\n", filename);
@@ -241,6 +257,7 @@ spinn_sim_stat_open_per_node_counters(spinn_sim_t *sim)
 		if (per_node_packets_accepted) fprintf(sim->stat_file_per_node_counters, "\tpackets_accepted");
 		if (per_node_packets_arrived)  fprintf(sim->stat_file_per_node_counters, "\tpackets_arrived");
 		if (per_node_packets_dropped)  fprintf(sim->stat_file_per_node_counters, "\tpackets_dropped");
+		if (per_node_packets_forwarded)fprintf(sim->stat_file_per_node_counters, "\tpackets_forwarded");
 		fprintf(sim->stat_file_per_node_counters, "\n");
 	}
 	
@@ -456,10 +473,11 @@ spinn_sim_stat_start_sample_per_node_counters(spinn_sim_t *sim)
 {
 	// Reset all counters
 	for (size_t i = 0; i < sim->system_size.x*sim->system_size.y; i++) {
-		sim->nodes[i].stat_packets_offered  = 0;
-		sim->nodes[i].stat_packets_accepted = 0;
-		sim->nodes[i].stat_packets_arrived  = 0;
-		sim->nodes[i].stat_packets_dropped  = 0;
+		sim->nodes[i].stat_packets_offered   = 0;
+		sim->nodes[i].stat_packets_accepted  = 0;
+		sim->nodes[i].stat_packets_arrived   = 0;
+		sim->nodes[i].stat_packets_dropped   = 0;
+		sim->nodes[i].stat_packets_forwarded = 0;
 	}
 }
 
@@ -494,21 +512,26 @@ spinn_sim_stat_end_sample_global_counters(spinn_sim_t *sim)
 		"measurements.global_counters.packets_arrived");
 	bool glbl_packets_dropped = spinn_sim_config_lookup_bool(sim,
 		"measurements.global_counters.packets_dropped");
+	bool glbl_packets_forwarded = spinn_sim_config_lookup_bool(sim,
+		"measurements.global_counters.packets_forwarded");
 	
 	// Dump into file
 	if (glbl_packets_offered || glbl_packets_accepted ||
-			glbl_packets_arrived || glbl_packets_dropped) {
+	    glbl_packets_arrived || glbl_packets_dropped ||
+	    glbl_packets_forwarded) {
 		int stat_packets_offered  = 0;
 		int stat_packets_accepted = 0;
 		int stat_packets_arrived  = 0;
 		int stat_packets_dropped  = 0;
+		int stat_packets_forwarded  = 0;
 		
 		// Sum up all values
 		for (size_t i = 0; i < sim->system_size.x*sim->system_size.y; i++) {
-			stat_packets_offered  += sim->nodes[i].stat_packets_offered;
-			stat_packets_accepted += sim->nodes[i].stat_packets_accepted;
-			stat_packets_arrived  += sim->nodes[i].stat_packets_arrived;
-			stat_packets_dropped  += sim->nodes[i].stat_packets_dropped;
+			stat_packets_offered   += sim->nodes[i].stat_packets_offered;
+			stat_packets_accepted  += sim->nodes[i].stat_packets_accepted;
+			stat_packets_arrived   += sim->nodes[i].stat_packets_arrived;
+			stat_packets_dropped   += sim->nodes[i].stat_packets_dropped;
+			stat_packets_forwarded += sim->nodes[i].stat_packets_forwarded;
 		}
 	
 		fprint_standard_fields(sim, sim->stat_file_global_counters);
@@ -520,6 +543,8 @@ spinn_sim_stat_end_sample_global_counters(spinn_sim_t *sim)
 			fprintf(sim->stat_file_global_counters, "\t%d", stat_packets_arrived);
 		if (glbl_packets_dropped)
 			fprintf(sim->stat_file_global_counters, "\t%d", stat_packets_dropped);
+		if (glbl_packets_forwarded)
+			fprintf(sim->stat_file_global_counters, "\t%d", stat_packets_forwarded);
 		
 		fprintf(sim->stat_file_global_counters, "\n");
 		
@@ -540,10 +565,13 @@ spinn_sim_stat_end_sample_per_node_counters(spinn_sim_t *sim)
 		"measurements.per_node_counters.packets_arrived");
 	bool per_node_packets_dropped = spinn_sim_config_lookup_bool(sim,
 		"measurements.per_node_counters.packets_dropped");
+	bool per_node_packets_forwarded = spinn_sim_config_lookup_bool(sim,
+		"measurements.per_node_counters.packets_forwarded");
 	
 	// Dump into file
 	if (per_node_packets_offered || per_node_packets_accepted ||
-			per_node_packets_arrived || per_node_packets_dropped) {
+	    per_node_packets_arrived || per_node_packets_dropped ||
+	    per_node_packets_forwarded) {
 		
 		// Iterate over all nodes
 		for (int y = 0; y < sim->system_size.y; y++) {
@@ -567,6 +595,8 @@ spinn_sim_stat_end_sample_per_node_counters(spinn_sim_t *sim)
 					fprintf(sim->stat_file_per_node_counters, "\t%d", node->stat_packets_arrived);
 				if (per_node_packets_dropped)
 					fprintf(sim->stat_file_per_node_counters, "\t%d", node->stat_packets_dropped);
+				if (per_node_packets_forwarded)
+					fprintf(sim->stat_file_per_node_counters, "\t%d", node->stat_packets_forwarded);
 				
 				fprintf(sim->stat_file_per_node_counters, "\n");
 			}
