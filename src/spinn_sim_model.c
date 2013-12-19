@@ -183,6 +183,32 @@ configure_node_packet_gen(spinn_node_t *node)
 		target = node->sim->node_packet_gen_p2p_target[(node->position.y*node->sim->system_size.x)
 		                                               + node->position.x];
 		spinn_packet_gen_set_spatial_dist_p2p(&(node->packet_gen), target);
+	} else if (strcmp(gen_spatial_dist, "complement") == 0) {
+		if (node->sim->some_nodes_disabled) {
+			fprintf(stderr, "Error: Complement spatial distribution not possible for non-rectangular networks!\n");
+			exit(-1);
+		}
+		if (!node->sim->allow_local_packets && (node->sim->system_size.x%2 || node->sim->system_size.y%2)) {
+			fprintf(stderr, "Error: Complement spatial distribution must be able to send local packets for odd-sized networks!\n");
+			exit(-1);
+		}
+		spinn_packet_gen_set_spatial_dist_complement(&(node->packet_gen));
+	} else if (strcmp(gen_spatial_dist, "transpose") == 0) {
+		if (node->sim->some_nodes_disabled || node->sim->system_size.x != node->sim->system_size.y) {
+			fprintf(stderr, "Error: Transpose spatial distribution not possible for non-square networks!\n");
+			exit(-1);
+		}
+		if (!node->sim->allow_local_packets) {
+			fprintf(stderr, "Error: Transpose spatial distribution must be able to send local packets!\n");
+			exit(-1);
+		}
+		spinn_packet_gen_set_spatial_dist_transpose(&(node->packet_gen));
+	} else if (strcmp(gen_spatial_dist, "tornado") == 0) {
+		if (node->sim->some_nodes_disabled) {
+			fprintf(stderr, "Error: Tornado spatial distribution not possible for non-rectangular networks!\n");
+			exit(-1);
+		}
+		spinn_packet_gen_set_spatial_dist_tornado(&(node->packet_gen));
 	} else {
 		fprintf(stderr, "Error: model.packet_generator.spatial.dist not recognised!\n");
 		exit(-1);

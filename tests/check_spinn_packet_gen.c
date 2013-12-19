@@ -87,15 +87,17 @@ dest_filter(const spinn_coord_t *dest, void *_allow_local)
  ******************************************************************************/
 
 // Create a packet generator with most arguments set to sensible defaults.
-#define INIT_GEN(allow_local) \
+#define INIT_GEN_POS(allow_local, pos) \
 	spinn_packet_gen_init( &g, &s, &b, &pool \
-	                     , POSITION, SYSTEM_SIZE \
+	                     , (pos), SYSTEM_SIZE \
 	                     , PERIOD \
 	                     , true \
 	                     , dest_filter \
 	                     , (void *)(allow_local) \
 	                     , on_packet_gen, (void *)1234 \
 	                     )
+#define INIT_GEN(allow_local) \
+	INIT_GEN_POS((allow_local), (POSITION))
 
 #define SET_GEN_BERNOULLI(prob) spinn_packet_gen_set_temporal_dist_bernoulli(&g, (prob))
 #define SET_GEN_PERIODIC(interval) spinn_packet_gen_set_temporal_dist_periodic(&g, (interval))
@@ -207,7 +209,7 @@ START_TEST (test_cyclic_dist)
 		for (int j = 0; j < PERIOD; j++)
 			scheduler_tick_tock(&s);
 		
-		// A packet should have arrived, note its posiiton
+		// A packet should have arrived, note its position
 		ck_assert(!buffer_is_empty(&b));
 		spinn_packet_t *p = (spinn_packet_t *)buffer_pop(&b);
 		visited_nodes[p->destination.x][p->destination.y]++;
@@ -254,7 +256,7 @@ START_TEST (test_p2p_dist)
 			scheduler_tick_tock(&s);
 		
 		if (!null_destination) {
-			// A packet should have arrived, note its posiiton
+			// A packet should have arrived, note its position
 			ck_assert(!buffer_is_empty(&b));
 			spinn_packet_t *p = (spinn_packet_t *)buffer_pop(&b);
 			ck_assert_int_eq(p->destination.x, 0);
@@ -279,6 +281,59 @@ START_TEST (test_p2p_dist)
 }
 END_TEST
 
+#define TEST_SINGLE_DEST_DIST(name, set_dist_func, expected_x, expected_y) \
+	START_TEST (name) \
+	{ \
+		spinn_coord_t position; \
+		position.x = _i%SYSTEM_SIZE_X; \
+		position.y = _i/SYSTEM_SIZE_X; \
+		 \
+		INIT_GEN_POS(true, position); SET_GEN_BERNOULLI(1.0); \
+		(set_dist_func)(&g); \
+		 \
+		/* Run to allow REPEATS packets to be generated. */ \
+		for (int i = 0; i < REPEATS; i++) { \
+			for (int j = 0; j < PERIOD; j++) \
+				scheduler_tick_tock(&s); \
+			 \
+			/* A packet should have arrived, check its position */ \
+			ck_assert(!buffer_is_empty(&b)); \
+			spinn_packet_t *p = (spinn_packet_t *)buffer_pop(&b); \
+			ck_assert_int_eq(p->destination.x, (expected_x)); \
+			ck_assert_int_eq(p->destination.y, (expected_y)); \
+			 \
+			/* Check the payload added by the callback is correct */ \
+			ck_assert_int_eq((int)p->payload, 4321); \
+			 \
+			/* Free the packet resource */ \
+			spinn_packet_pool_pfree(&pool, p); \
+		} \
+		 \
+		ck_assert_int_eq(packets_sent, REPEATS); \
+		ck_assert_int_eq(packets_blocked, 0); \
+	} \
+	END_TEST
+
+/* Test the complement traffic pattern. */
+TEST_SINGLE_DEST_DIST( test_complement_dist
+                     , spinn_packet_gen_set_spatial_dist_complement
+                     , SYSTEM_SIZE_X - position.x - 1
+                     , SYSTEM_SIZE_Y - position.y - 1
+                     )
+
+/* Test the transpose traffic pattern. */
+TEST_SINGLE_DEST_DIST( test_transpose_dist
+                     , spinn_packet_gen_set_spatial_dist_transpose
+                     , position.y
+                     , position.x
+                     )
+
+/* Test the tornado traffic pattern. */
+TEST_SINGLE_DEST_DIST( test_tornado_dist
+                     , spinn_packet_gen_set_spatial_dist_tornado
+                     , ((SYSTEM_SIZE_X/2) + position.x) % SYSTEM_SIZE_X
+                     , position.y
+                     )
 
 /**
  * Ensure with a periodic interval, packets are sent at the correct times when
@@ -382,6 +437,9 @@ make_spinn_packet_gen_suite(void)
 	tcase_add_loop_test(tc_core, test_periodic_blocked, 0, 2);
 	tcase_add_loop_test(tc_core, test_cyclic_dist, 0, 2);
 	tcase_add_loop_test(tc_core, test_p2p_dist, 0, 2);
+	tcase_add_loop_test(tc_core, test_complement_dist, 0, SYSTEM_SIZE_X*SYSTEM_SIZE_Y);
+	tcase_add_loop_test(tc_core, test_transpose_dist, 0, SYSTEM_SIZE_X*SYSTEM_SIZE_Y);
+	tcase_add_loop_test(tc_core, test_tornado_dist, 0, SYSTEM_SIZE_X*SYSTEM_SIZE_Y);
 	
 	// Add each test case to the suite
 	suite_add_tcase(s, tc_core);

@@ -264,6 +264,21 @@ spinn_packet_gen_tock(void *g_)
 				destination.x = g->spatial_dist_data.p2p.target.x;
 				destination.y = g->spatial_dist_data.p2p.target.y;
 				break;
+			
+			case SPINN_GS_DIST_COMPLEMENT:
+				destination.x = g->system_size.x - g->position.x - 1;
+				destination.y = g->system_size.y - g->position.y - 1;
+				break;
+			
+			case SPINN_GS_DIST_TRANSPOSE:
+				destination.x = g->position.y;
+				destination.y = g->position.x;
+				break;
+			
+			case SPINN_GS_DIST_TORNADO:
+				destination.x = ((g->system_size.x/2) + g->position.x) % g->system_size.x;
+				destination.y = g->position.y;
+				break;
 		}
 		
 		// If destination is (-1,-1) then exit early and don't generate a packet
@@ -373,6 +388,27 @@ spinn_packet_gen_set_spatial_dist_cyclic(spinn_packet_gen_t *g)
 {
 	g->spatial_dist = SPINN_GS_DIST_CYCLIC;
 	g->spatial_dist_data.cyclic.next_dest = g->position;
+}
+
+
+void
+spinn_packet_gen_set_spatial_dist_complement(spinn_packet_gen_t *g)
+{
+	g->spatial_dist = SPINN_GS_DIST_COMPLEMENT;
+}
+
+
+void
+spinn_packet_gen_set_spatial_dist_transpose(spinn_packet_gen_t *g)
+{
+	g->spatial_dist = SPINN_GS_DIST_TRANSPOSE;
+}
+
+
+void
+spinn_packet_gen_set_spatial_dist_tornado(spinn_packet_gen_t *g)
+{
+	g->spatial_dist = SPINN_GS_DIST_TORNADO;
 }
 
 

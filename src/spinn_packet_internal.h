@@ -37,6 +37,9 @@ typedef enum spinn_packet_gen_spatial_dist {
 	SPINN_GS_DIST_CYCLIC,
 	SPINN_GS_DIST_UNIFORM,
 	SPINN_GS_DIST_P2P,
+	SPINN_GS_DIST_COMPLEMENT,
+	SPINN_GS_DIST_TRANSPOSE,
+	SPINN_GS_DIST_TORNADO,
 } spinn_packet_gen_spatial_dist_t;
 
 

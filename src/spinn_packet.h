@@ -225,6 +225,37 @@ void spinn_packet_gen_set_spatial_dist_p2p( spinn_packet_gen_t *packet_gen
 
 
 /**
+ * Set up the packet generator to send packets in a complement pattern where the
+ * sender's X and Y coordinates are mirrored down the Y and X axes respectively
+ * to produce the destination address.
+ *
+ * This should be called outside of the simulation tick/tock phases for
+ * deterministic behaviour.
+ */
+void spinn_packet_gen_set_spatial_dist_complement(spinn_packet_gen_t *packet_gen);
+
+
+/**
+ * Set up the packet generator to send packets in a transpose pattern where the
+ * sender's X and Y coordinates are swapped to produce the destination address.
+ *
+ * This should be called outside of the simulation tick/tock phases for
+ * deterministic behaviour.
+ */
+void spinn_packet_gen_set_spatial_dist_transpose(spinn_packet_gen_t *packet_gen);
+
+
+/**
+ * Set up the packet generator to send packets in a tornado pattern where
+ * packets are sent half the system's size to the right.
+ *
+ * This should be called outside of the simulation tick/tock phases for
+ * deterministic behaviour.
+ */
+void spinn_packet_gen_set_spatial_dist_tornado(spinn_packet_gen_t *packet_gen);
+
+
+/**
  * Set up the packet generator to send packets to each node of the system in
  * turn, starting with the current node.
  *
