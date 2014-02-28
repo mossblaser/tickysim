@@ -60,13 +60,13 @@ load_routing_tables(void)
 
 
 spinn_direction_t
-get_routing_table_direction(spinn_router_t *r, spinn_packet_t *p)
+get_routing_table_direction(spinn_coord_t position, spinn_coord_t destination)
 {
 	// XXX: X and Y are the wrong way around in Javier's files.
-	unsigned int key = p->destination.y<<8 | p->destination.x;
+	unsigned int key = destination.y<<8 | destination.x;
 	
-	int x = r->position.x;
-	int y = r->position.y;
+	int x = position.x;
+	int y = position.y;
 	
 	for (int i = 0; i < 1024; i++) {
 		if (routing_tables[x][y][i][0] == key) {
@@ -83,20 +83,17 @@ get_routing_table_direction(spinn_router_t *r, spinn_packet_t *p)
 	}
 	
 	fprintf(stdout, "ERROR: No routing key at %d,%d for destination %d,%d!\n"
-	              , r->position.x, r->position.y
-	              , p->destination.x, p->destination.y
+	              , position.x, position.y
+	              , destination.x, destination.y
 	              );
 	return SPINN_LOCAL;
 }
 
 
-int
-main(int argc, char *argv[])
+
+void
+compare_routes(void)
 {
-	load_routing_tables();
-	
-	//srand((int)time(NULL));
-	
 	// Test all possible routes
 	for (int x1 = 0; x1 < WIDTH; x1++) {
 		fprintf(stderr, "%d/%d...\n", x1, WIDTH);
@@ -120,21 +117,22 @@ main(int argc, char *argv[])
 					r.position.y = y1;
 					while (true) {
 						spinn_direction_t direction = get_packet_output_direction(&r, &p);
-						spinn_direction_t table_direction = get_routing_table_direction(&r, &p);
+						spinn_direction_t table_direction = get_routing_table_direction(r.position, p.destination);
 						
 						// Check against routing tables
 						if (table_direction != direction) {
 							spinn_full_coord_t full_vector = spinn_shortest_vector(r.position, p.destination, ((spinn_coord_t){WIDTH,HEIGHT}));
 							spinn_coord_t vector = spinn_full_coord_to_coord(full_vector);
+							int distance = spinn_magnitude(full_vector);
 							
-							fprintf(stdout, "ERROR: Packet %d,%d -> %d,%d routed %d rather than %d in table at %d,%d (shortest vector: %d,%d,%d aka %d,%d)!\n"
+							fprintf(stdout, "ERROR: Packet %d,%d -> %d,%d routed %d rather than %d in table at %d,%d (shortest vector: %d,%d,%d = %d long)!\n"
 							              , p.source.x, p.source.y
 							              , p.destination.x, p.destination.y
 							              , direction
 							              , table_direction
 							              , r.position.x, r.position.y
 							              , full_vector.x, full_vector.y, full_vector.z
-							              , vector.x, vector.y
+							              , distance
 							              );
 							break;
 							//direction = table_direction;
@@ -165,4 +163,16 @@ main(int argc, char *argv[])
 			}
 		}
 	}
+}
+
+
+
+int
+main(int argc, char *argv[])
+{
+	load_routing_tables();
+	
+	//srand((int)time(NULL));
+	
+	compare_routes();
 }
