@@ -25,7 +25,7 @@ RESULTS_DIR="$(dirname "$RESULTS_PREFIX${RESULT_FILES[0]}" )"
 
 CLUSTER_HEAD_NODE=kilburn.cs.man.ac.uk
 
-PARALLEL_PROFILE=cluster128
+PARALLEL_PROFILE=cluster32
 
 echo =====================
 echo Experiment Parameters
@@ -70,7 +70,7 @@ ssh $CLUSTER_HEAD_NODE "rm -rf tickysim-0.1/; \
                         echo Collating results && \
                         echo ================= && \
                         for RESULT_FILE in ${RESULT_FILES[@]}; do \
-                          [ ! -f \"${RESULTS_PREFIX}g1_s1_\$RESULT_FILE\" ] && continue ; \
+                          [ ! -f \"${RESULTS_PREFIX}g1_\$RESULT_FILE\" ] && continue ; \
                           ( head -n1 \"${RESULTS_PREFIX}g1_\$RESULT_FILE\"; \
                             tail -q -n+2 \"${RESULTS_PREFIX}\"g*_\"\$RESULT_FILE\" | sort -n; \
                           ) > \"${RESULTS_PREFIX}\$RESULT_FILE\"; \
