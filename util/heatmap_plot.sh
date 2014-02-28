@@ -1,23 +1,23 @@
 OUT_DIR="heatmaps/"
 
-# SIMULATOR FILE                                 PATTERN    INJ_INTERVAL  DATA_COL  DATA_NAME  X_COL  Y_COL  PATTERN_COL  INJ_INTERVAL_COL
+# SIMULATOR FILE                                   PATTERN    INJ_INTERVAL  DATA_COL  DATA_NAME  X_COL  Y_COL  PATTERN_COL  INJ_INTERVAL_COL
 EXPERIMENTS="$(cat <<EOF
-Tickysim    results/ed8f5e8_per_node_counters.dat  cyclic     320           10        Routed     5      6      3            4
-Tickysim    results/ed8f5e8_per_node_counters.dat  cyclic      53           10        Routed     5      6      3            4
-Tickysim    results/ed8f5e8_per_node_counters.dat  cyclic      53            9        Dropped    5      6      3            4
-Tickysim    results/ed8f5e8_per_node_counters.dat  cyclic      32            9        Dropped    5      6      3            4
-Tickysim    results/ed8f5e8_per_node_counters.dat  complement 320           10        Routed     5      6      3            4
-Tickysim    results/ed8f5e8_per_node_counters.dat  complement  53           10        Routed     5      6      3            4
-Tickysim    results/ed8f5e8_per_node_counters.dat  complement  53            9        Dropped    5      6      3            4
-Tickysim    results/ed8f5e8_per_node_counters.dat  complement  32            9        Dropped    5      6      3            4
-Tickysim    results/ed8f5e8_per_node_counters.dat  transpose  320           10        Routed     5      6      3            4
-Tickysim    results/ed8f5e8_per_node_counters.dat  transpose   53           10        Routed     5      6      3            4
-Tickysim    results/ed8f5e8_per_node_counters.dat  transpose   53            9        Dropped    5      6      3            4
-Tickysim    results/ed8f5e8_per_node_counters.dat  transpose   32            9        Dropped    5      6      3            4
-Tickysim    results/ed8f5e8_per_node_counters.dat  tornado    320           10        Routed     5      6      3            4
-Tickysim    results/ed8f5e8_per_node_counters.dat  tornado     53           10        Routed     5      6      3            4
-Tickysim    results/ed8f5e8_per_node_counters.dat  tornado     53            9        Dropped    5      6      3            4
-Tickysim    results/ed8f5e8_per_node_counters.dat  tornado     32            9        Dropped    5      6      3            4
+Tickysim    results/e74e47a_per_node_counters.dat  cyclic     320           10        Routed     5      6      3            4
+Tickysim    results/e74e47a_per_node_counters.dat  cyclic      53           10        Routed     5      6      3            4
+Tickysim    results/e74e47a_per_node_counters.dat  cyclic      53            9        Dropped    5      6      3            4
+Tickysim    results/e74e47a_per_node_counters.dat  cyclic      32            9        Dropped    5      6      3            4
+Tickysim    results/e74e47a_per_node_counters.dat  complement 320           10        Routed     5      6      3            4
+Tickysim    results/e74e47a_per_node_counters.dat  complement  53           10        Routed     5      6      3            4
+Tickysim    results/e74e47a_per_node_counters.dat  complement  53            9        Dropped    5      6      3            4
+Tickysim    results/e74e47a_per_node_counters.dat  complement  32            9        Dropped    5      6      3            4
+Tickysim    results/e74e47a_per_node_counters.dat  transpose  320           10        Routed     5      6      3            4
+Tickysim    results/e74e47a_per_node_counters.dat  transpose   53           10        Routed     5      6      3            4
+Tickysim    results/e74e47a_per_node_counters.dat  transpose   53            9        Dropped    5      6      3            4
+Tickysim    results/e74e47a_per_node_counters.dat  transpose   32            9        Dropped    5      6      3            4
+Tickysim    results/e74e47a_per_node_counters.dat  tornado    320           10        Routed     5      6      3            4
+Tickysim    results/e74e47a_per_node_counters.dat  tornado     53           10        Routed     5      6      3            4
+Tickysim    results/e74e47a_per_node_counters.dat  tornado     53            9        Dropped    5      6      3            4
+Tickysim    results/e74e47a_per_node_counters.dat  tornado     32            9        Dropped    5      6      3            4
 SpiNNaker   results/spinnaker_results.csv          cyclic     320            6        Routed     1      2      9            8
 SpiNNaker   results/spinnaker_results.csv          cyclic      53            6        Routed     1      2      9            8
 SpiNNaker   results/spinnaker_results.csv          cyclic      53            5        Dropped    1      2      9            8
