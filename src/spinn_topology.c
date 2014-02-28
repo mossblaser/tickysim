@@ -56,44 +56,54 @@ spinn_full_coord_minimise(spinn_full_coord_t coord)
 }
 
 
+
+#define TRY_VECT(vect) do { if (spinn_magnitude((vect)) < spinn_magnitude(best_vect)) { \
+                              best_vect = vect; \
+                            } \
+                          } while (0)
+
 spinn_full_coord_t
 spinn_shortest_vector( spinn_coord_t s
                      , spinn_coord_t t
                      , spinn_coord_t system_size
                      )
 {
-	// A terrible hack (inherited from gollywhomper). Re-center the world either
-	// so the source is in the bottom left corner, the center or the top/right of
-	// the system. For each, compute the shortest vector in the same way you would
-	// for a normal grid. Pick the one of these which wins.
-	spinn_coord_t centers[] = {
-		{0,               0},
-		{system_size.x/2, system_size.y/2},
-		{system_size.x-1, system_size.y-1},
-	};
-	int num_centers = sizeof(centers)/sizeof(spinn_coord_t);
+	// Implementation of routing as used in INSEE's SpiNNaker model. Provides
+	// better balanced utilisation of links than tickysim. Simply try every
+	// possible direction and try the best one found.
 	
-	spinn_full_coord_t best_path;
+	// Special case if path to self.
+	if (s.x == t.x && s.y == t.y)
+		return ((spinn_full_coord_t){0,0,0});
 	
-	for (int i = 0; i < num_centers; i++) {
-		// Re-center the source/target
-		spinn_full_coord_t rc_s = {centers[i].x, centers[i].y, 0};
-		spinn_full_coord_t rc_t = { ((t.x - s.x) + centers[i].x + system_size.x) % system_size.x
-		                          , ((t.y - s.y) + centers[i].y + system_size.y) % system_size.y
-		                          , 0
-		                          };
-		spinn_full_coord_t path = spinn_full_coord_minimise((spinn_full_coord_t){
-			rc_t.x - rc_s.x,
-			rc_t.y - rc_s.y,
-			rc_t.z - rc_s.z
-		});
-		
-		if (i == 0 || spinn_magnitude(path) < spinn_magnitude(best_path)) {
-			best_path = path;
-		}
-	}
+	// The distances between s and t for non-wrapping and always wrapping routes
+	// for x and y axes respectively.
+	int dx_nw = t.x - s.x;
+	int dy_nw = t.y - s.y;
+	int dx_aw = (dx_nw > 0) ? (dx_nw - system_size.x) : (dx_nw + system_size.x);
+	int dy_aw = (dy_nw > 0) ? (dy_nw - system_size.y) : (dy_nw + system_size.y);
 	
-	return best_path;
+	// Try the non-wrapping possibilities using only x,z, y,z and x,y
+	spinn_full_coord_t best_vect = (spinn_full_coord_t){dx_nw - dy_nw, 0, -dy_nw};
+	TRY_VECT(                     ((spinn_full_coord_t){0, dy_nw - dx_nw, -dx_nw}));
+	TRY_VECT(                     ((spinn_full_coord_t){dx_nw, dy_nw, 0}));
+	
+	// Try the x-non-wrapping, y-wrapping possibilities using only x,z, y,z and x,y
+	TRY_VECT(                     ((spinn_full_coord_t){dx_nw - dy_aw, 0, -dy_aw}));
+	TRY_VECT(                     ((spinn_full_coord_t){0, dy_aw - dx_nw, -dx_nw}));
+	TRY_VECT(                     ((spinn_full_coord_t){dx_nw, dy_aw, 0}));
+	
+	// Try the x-wrapping, y-non-wrapping possibilities using only x,z, y,z and x,y
+	TRY_VECT(                     ((spinn_full_coord_t){dx_aw - dy_nw, 0, -dy_nw}));
+	TRY_VECT(                     ((spinn_full_coord_t){0, dy_nw - dx_aw, -dx_aw}));
+	TRY_VECT(                     ((spinn_full_coord_t){dx_aw, dy_nw, 0}));
+	
+	// Try the x-wrapping, y-wrapping possibilities using only x,z, y,z and x,y
+	TRY_VECT(                     ((spinn_full_coord_t){dx_aw - dy_aw, 0, -dy_aw}));
+	TRY_VECT(                     ((spinn_full_coord_t){0, dy_aw - dx_aw, -dx_aw}));
+	TRY_VECT(                     ((spinn_full_coord_t){dx_aw, dy_aw, 0}));
+	
+	return best_vect;
 }
 
 

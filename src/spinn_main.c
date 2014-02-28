@@ -29,6 +29,10 @@ get_packet_output_direction(spinn_router_t *r, spinn_packet_t *p);
 unsigned int routing_tables[WIDTH][HEIGHT][1024][2];
 
 
+int routing_table_link_uses[6] = {0,0,0,0,0,0};
+int tickysim_link_uses[6]      = {0,0,0,0,0,0};
+
+
 void
 load_routing_tables(void)
 {
@@ -90,13 +94,65 @@ get_routing_table_direction(spinn_coord_t position, spinn_coord_t destination)
 }
 
 
+int
+get_table_route_length(spinn_coord_t source, spinn_coord_t destination)
+{
+	int length = 0;
+	
+	while (1) {
+		spinn_direction_t direction = get_routing_table_direction(source, destination);
+		if (direction == SPINN_LOCAL)
+			return length;
+		
+		// Move through the system
+		spinn_coord_t vector = spinn_dir_to_vector(direction);
+		source.x += vector.x + WIDTH;
+		source.y += vector.y + HEIGHT;
+		source.x %= WIDTH;
+		source.y %= HEIGHT;
+		
+		routing_table_link_uses[direction]++;
+		
+		length++;
+	}
+}
+
+
+void
+check_table_minimality(void)
+{
+	// Test all possible routes
+	for (int x1 = 0; x1 < WIDTH; x1++) {
+		for (int y1 = 0; y1 < HEIGHT; y1++) {
+			for (int x2 = 0; x2 < WIDTH; x2++) {
+				for (int y2 = 0; y2 < HEIGHT; y2++) {
+					spinn_coord_t source = (spinn_coord_t){x1,y1};
+					spinn_coord_t destination = (spinn_coord_t){x2,y2};
+					
+					int table_length = get_table_route_length(source, destination);
+					int ticky_length = spinn_magnitude(spinn_shortest_vector(source, destination, ((spinn_coord_t){WIDTH,HEIGHT})));
+					
+					if (table_length != ticky_length) {
+						fprintf(stdout, "ERROR: Routing table route %d,%d -> %d,%d has length %d which doesn't match tickysim's %d!\n"
+						              , x1, y1
+						              , x2, y2
+						              , table_length
+						              , ticky_length
+						              );
+					}
+				}
+			}
+		}
+	}
+}
+
+
 
 void
 compare_routes(void)
 {
 	// Test all possible routes
 	for (int x1 = 0; x1 < WIDTH; x1++) {
-		fprintf(stderr, "%d/%d...\n", x1, WIDTH);
 		for (int y1 = 0; y1 < HEIGHT; y1++) {
 			for (int x2 = 0; x2 < WIDTH; x2++) {
 				for (int y2 = 0; y2 < HEIGHT; y2++) {
@@ -122,7 +178,6 @@ compare_routes(void)
 						// Check against routing tables
 						if (table_direction != direction) {
 							spinn_full_coord_t full_vector = spinn_shortest_vector(r.position, p.destination, ((spinn_coord_t){WIDTH,HEIGHT}));
-							spinn_coord_t vector = spinn_full_coord_to_coord(full_vector);
 							int distance = spinn_magnitude(full_vector);
 							
 							fprintf(stdout, "ERROR: Packet %d,%d -> %d,%d routed %d rather than %d in table at %d,%d (shortest vector: %d,%d,%d = %d long)!\n"
@@ -134,7 +189,7 @@ compare_routes(void)
 							              , full_vector.x, full_vector.y, full_vector.z
 							              , distance
 							              );
-							break;
+							//break;
 							//direction = table_direction;
 						}
 						
@@ -157,6 +212,8 @@ compare_routes(void)
 							r.position.x %= WIDTH;
 							r.position.y %= HEIGHT;
 							p.direction = direction;
+							
+							tickysim_link_uses[direction]++;
 						}
 					}
 				}
@@ -175,4 +232,24 @@ main(int argc, char *argv[])
 	//srand((int)time(NULL));
 	
 	compare_routes();
+	check_table_minimality();
+	
+	// Display difference in link usage
+	fprintf(stdout, "      E       \tNE      \tN       \tW       \tSW      \tS       \n");
+	fprintf(stdout, "Table %-8d\t%-8d\t%-8d\t%-8d\t%-8d\t%-8d\n"
+	              , routing_table_link_uses[0]
+	              , routing_table_link_uses[1]
+	              , routing_table_link_uses[2]
+	              , routing_table_link_uses[3]
+	              , routing_table_link_uses[4]
+	              , routing_table_link_uses[5]
+	              );
+	fprintf(stdout, "Ticky %-8d\t%-8d\t%-8d\t%-8d\t%-8d\t%-8d\n"
+	              , tickysim_link_uses[0]
+	              , tickysim_link_uses[1]
+	              , tickysim_link_uses[2]
+	              , tickysim_link_uses[3]
+	              , tickysim_link_uses[4]
+	              , tickysim_link_uses[5]
+	              );
 }

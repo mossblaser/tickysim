@@ -45,14 +45,6 @@ spinn_packet_init_dor( spinn_packet_t *p
 	if (use_wrap_around_links) {
 		// Find the path between the src/dest on a torus
 		v = spinn_shortest_vector(source, destination, system_size);
-		
-		// Randomize the direction to travel if reversing the direction of travel
-		// doesn't increase the distance
-		if (system_size.x%2 == 0 && v.x == system_size.x/2 && random() < (RAND_MAX/2)) v.x *= -1;
-		if (system_size.y%2 == 0 && v.y == system_size.y/2 && random() < (RAND_MAX/2)) v.y *= -1;
-		// XXX: Only randomize the z axis on square systems
-		if (system_size.x == system_size.y)
-			if (system_size.x%2 == 0 && v.z == system_size.x/2 && random() < (RAND_MAX/2)) v.z *= -1;
 	} else {
 		v = (spinn_full_coord_t){ destination.x - source.x
 		                        , destination.y - source.y
