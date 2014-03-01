@@ -25,7 +25,7 @@ RESULTS_DIR="$(dirname "$RESULTS_PREFIX${RESULT_FILES[0]}" )"
 
 CLUSTER_HEAD_NODE=kilburn.cs.man.ac.uk
 
-PARALLEL_PROFILE=cluster64
+PARALLEL_PROFILE=cluster32
 
 echo =====================
 echo Experiment Parameters
@@ -59,7 +59,7 @@ ssh $CLUSTER_HEAD_NODE "rm -rf tickysim-0.1/; \
                         echo ================== && \
                         echo Running simulation && \
                         echo ================== && \
-                        time parallel -J$PARALLEL_PROFILE -j2 \
+                        time parallel -J$PARALLEL_PROFILE -j1 \
                           -a <(seq $NUM_GROUPS) \
                           ./src/tickysim_spinnaker \
                             \"$CONFIG_FILE\" \
