@@ -130,39 +130,51 @@ def get_path(src, dst, bounds = None):
 	If bounds is given it must be a 2-tuple specifying the (x,y) dimensions of the
 	mesh size. The path will then be allowed to 'wrap-around', otherwise it will
 	not.
+	
+	This algorithm is based on the one used by INSEE.
 	"""
-	assert(len(src) == len(dst) == 3)
+	assert(len(src) == len(dst) == 2)
 	assert(bounds is None or len(bounds) == 2)
 	
-	src = to_xy(src)
-	dst = to_xy(dst)
+	# Special case for self-loop
+	if src == dst:
+		return (0,0,0)
 	
-	# If bounded, re-centre the world around the source
-	if bounds is not None:
-		delta = None
-		# This is a terrible hack. Re-centre the world around the bottom left,
-		# center and top-right in order to find the /actual/ shortest path. I and
-		# a number of other very helpful people have spent literally hours and hours
-		# on trying to solve this problem elegantly before I gave up and did this...
-		for centre in (0.0, 0.5, 1):
-			new_dst = ( ((dst[0] - src[0]) + int(bounds[0]*centre))   % bounds[0]
-			          , ((dst[1] - src[1]) + int(bounds[1]*centre))   % bounds[1]
-			          , 0
-			          )
-			new_src = ( int(bounds[0]*centre)
-			          , int(bounds[1]*centre)
-			          , 0
-			          )
-			new_delta = to_shortest_path(zero_pad(tuple(d-s for (s,d) in zip(new_src, new_dst))))
-			if delta is None or manhattan(new_delta) < manhattan(delta):
-				delta = new_delta
-		
-	else:
-		# The path is simply a delta of the source and destination
-		delta = to_shortest_path(zero_pad(tuple(d-s for (s,d) in zip(src, dst))))
+	# The distances between s and t for non-wrapping and always wrapping routes
+	# for x and y axes respectively.
+	dx_nw = dst[0] - src[0]
+	dy_nw = dst[1] - src[1]
+	dx_aw = (dx_nw - bounds[0]) if (dx_nw > 0) else (dx_nw + bounds[0])
+	dy_aw = (dy_nw - bounds[1]) if (dy_nw > 0) else (dy_nw + bounds[1])
 	
-	# Return the shortest path to the given point
-	return delta
+	best_vect = None
+	def try_vect(vect):
+		if best_vect is None or manhattan(vect) < manhattan(best_vect):
+			return vect
+		else:
+			return best_vect
+	
+	# Try the non-wrapping possibilities using only x,z, y,z and x,y
+	best_vect = try_vect((dx_nw - dy_nw, 0, -dy_nw))
+	best_vect = try_vect((0, dy_nw - dx_nw, -dx_nw))
+	best_vect = try_vect((dx_nw, dy_nw, 0))
+	
+	# Try the x-non-wrapping, y-wrapping possibilities using only x,z, y,z and x,y
+	best_vect = try_vect((dx_nw - dy_aw, 0, -dy_aw))
+	best_vect = try_vect((0, dy_aw - dx_nw, -dx_nw))
+	best_vect = try_vect((dx_nw, dy_aw, 0))
+	
+	# Try the x-wrapping, y-non-wrapping possibilities using only x,z, y,z and x,y
+	best_vect = try_vect((dx_aw - dy_nw, 0, -dy_nw))
+	best_vect = try_vect((0, dy_nw - dx_aw, -dx_aw))
+	best_vect = try_vect((dx_aw, dy_nw, 0))
+	
+	# Try the x-wrapping, y-wrapping possibilities using only x,z, y,z and x,y
+	best_vect = try_vect((dx_aw - dy_aw, 0, -dy_aw))
+	best_vect = try_vect((0, dy_aw - dx_aw, -dx_aw))
+	best_vect = try_vect((dx_aw, dy_aw, 0))
+	
+	return best_vect;
 
 
 def zero_pad(vector, length = 3):

@@ -1,4 +1,5 @@
-OUT_DIR="heatmaps/"
+OUT_DIR="heatmaps"
+DRAW_ROUTES_OUT_DIR="heatmaps_with_routes"
 
 # SIMULATOR W  H  FILE                                   PATTERN    INJ_INTERVAL  DATA_COL  DATA_NAME  X_COL  Y_COL  PATTERN_COL  INJ_INTERVAL_COL
 EXPERIMENTS="$(cat <<EOF
@@ -68,23 +69,32 @@ EOF
 echo "$EXPERIMENTS" | while read SIMULATOR W H FILE PATTERN INJ_INTERVAL DATA_COL DATA_NAME X_COL Y_COL PATTERN_COL INJ_INTERVAL_COL; do
 	INJ_LOAD="$(python -c "print \"%0.2f\"%(16.0/$INJ_INTERVAL)")"
 	
-	OUTFILE="${OUT_DIR}/${SIMULATOR}_${PATTERN}_${INJ_LOAD}_${DATA_NAME}.png"
-	
-	mkdir -p "$(dirname "$OUTFILE")"
-	
-	gnuplot -e "SIMULATOR=\"${SIMULATOR}\";" \
-	        -e "W=${W};" \
-	        -e "H=${H};" \
-	        -e "FILE=\"${FILE}\";" \
-	        -e "PATTERN=\"${PATTERN}\";" \
-	        -e "INJ_INTERVAL=${INJ_INTERVAL};" \
-	        -e "DATA_COL=${DATA_COL};" \
-	        -e "DATA_NAME=\"${DATA_NAME}\";" \
-	        -e "X_COL=${X_COL};" \
-	        -e "Y_COL=${Y_COL};" \
-	        -e "PATTERN_COL=${PATTERN_COL};" \
-	        -e "INJ_INTERVAL_COL=${INJ_INTERVAL_COL};" \
-	        -e "UTIL_DIR=\"$(dirname "$0")\";" \
-	        $(dirname "$0")/heatmap_plot.gnuplot \
-	  > "$OUTFILE"
+	for DRAW_ROUTES in 0 1; do
+		if [ $DRAW_ROUTES -eq 1 ]; then
+			OUTFILE="${DRAW_ROUTES_OUT_DIR}/${SIMULATOR}_${PATTERN}_${INJ_LOAD}_${DATA_NAME}.png"
+		else
+			OUTFILE="${OUT_DIR}/${SIMULATOR}_${PATTERN}_${INJ_LOAD}_${DATA_NAME}.png"
+		fi
+		
+		echo "$OUTFILE"
+		
+		mkdir -p "$(dirname "$OUTFILE")"
+		
+		gnuplot -e "SIMULATOR=\"${SIMULATOR}\";" \
+		        -e "W=${W};" \
+		        -e "H=${H};" \
+		        -e "FILE=\"${FILE}\";" \
+		        -e "PATTERN=\"${PATTERN}\";" \
+		        -e "INJ_INTERVAL=${INJ_INTERVAL};" \
+		        -e "DATA_COL=${DATA_COL};" \
+		        -e "DATA_NAME=\"${DATA_NAME}\";" \
+		        -e "X_COL=${X_COL};" \
+		        -e "Y_COL=${Y_COL};" \
+		        -e "PATTERN_COL=${PATTERN_COL};" \
+		        -e "INJ_INTERVAL_COL=${INJ_INTERVAL_COL};" \
+		        -e "UTIL_DIR=\"$(dirname "$0")\";" \
+		        -e "DRAW_ROUTES=${DRAW_ROUTES};" \
+		        $(dirname "$0")/heatmap_plot.gnuplot \
+		  > "$OUTFILE"
+	done
 done
