@@ -448,6 +448,14 @@ spinn_packet_con_tick(void *c_)
 			c->temporal_dist_data.periodic.time_elapsed++;
 			break;
 		
+		case SPINN_CT_DIST_FIXED_DELAY:
+			// If a packet is available, only accept it after the required time has elapsed
+			if (!buffer_is_empty(c->buffer)) {
+				c->consume_packet = c->temporal_dist_data.fixed_delay.time_elapsed >= c->temporal_dist_data.fixed_delay.delay - 1;
+				c->temporal_dist_data.fixed_delay.time_elapsed++;
+			}
+			break;
+		
 		default:
 			c->consume_packet = false;
 			break;
@@ -481,10 +489,22 @@ spinn_packet_con_tock(void *c_)
 	// Clear up
 	spinn_packet_pool_pfree(c->pool, p);
 	
-	// Reset the timer for the periodic temporal distribution as a packet has now
-	// been sent
-	if (c->temporal_dist == SPINN_CT_DIST_PERIODIC)
-		c->temporal_dist_data.periodic.time_elapsed = 0;
+	switch (c->temporal_dist) {
+		case SPINN_CT_DIST_PERIODIC:
+			// Reset the timer for the periodic temporal distribution as a packet has
+			// now been sent
+			c->temporal_dist_data.periodic.time_elapsed = 0;
+			break;
+		case SPINN_CT_DIST_FIXED_DELAY:
+			// Reset the timer for the fixed_delay temporal distribution as a packet
+			// has now been sent
+			c->temporal_dist_data.fixed_delay.time_elapsed = 0;
+			break;
+		
+		default:
+			// Nothing to do for other distributions
+			break;
+	}
 }
 
 void
@@ -528,9 +548,19 @@ spinn_packet_con_set_temporal_dist_periodic( spinn_packet_con_t *c
                                            , int                 interval
                                            )
 {
-	c->temporal_dist = SPINN_GT_DIST_PERIODIC;
+	c->temporal_dist = SPINN_CT_DIST_PERIODIC;
 	c->temporal_dist_data.periodic.interval = interval;
 	c->temporal_dist_data.periodic.time_elapsed = 0;
+}
+
+void
+spinn_packet_con_set_temporal_dist_fixed_delay( spinn_packet_con_t *c
+                                              , int                 delay
+                                              )
+{
+	c->temporal_dist = SPINN_CT_DIST_FIXED_DELAY;
+	c->temporal_dist_data.fixed_delay.delay = delay;
+	c->temporal_dist_data.fixed_delay.time_elapsed = 0;
 }
 
 

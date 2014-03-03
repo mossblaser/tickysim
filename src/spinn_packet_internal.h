@@ -131,6 +131,7 @@ struct spinn_packet_gen {
 typedef enum spinn_packet_con_temporal_dist {
 	SPINN_CT_DIST_BERNOULLI,
 	SPINN_CT_DIST_PERIODIC,
+	SPINN_CT_DIST_FIXED_DELAY,
 } spinn_packet_con_temporal_dist_t;
 
 
@@ -160,6 +161,12 @@ struct spinn_packet_con {
 			int interval;
 			int time_elapsed;
 		} periodic;
+		
+		// Fixed-Delay distribution
+		struct {
+			int delay;
+			int time_elapsed;
+		} fixed_delay;
 		
 	} temporal_dist_data;
 	

@@ -26,6 +26,8 @@
 
 #define BUFFER_SIZE 10
 
+#define NUM_REPEATS 3
+
 scheduler_t s;
 buffer_t b;
 spinn_packet_pool_t pool;
@@ -75,6 +77,7 @@ on_packet_con(spinn_packet_t *p, void *data)
 
 #define SET_CON_BERNOULLI(prob) spinn_packet_con_set_temporal_dist_bernoulli(&c, (prob))
 #define SET_CON_PERIODIC(interval) spinn_packet_con_set_temporal_dist_periodic(&c, (interval))
+#define SET_CON_FIXED_DELAY(delay) spinn_packet_con_set_temporal_dist_fixed_delay(&c, (delay))
 
 
 /**
@@ -234,6 +237,46 @@ START_TEST (test_periodic_blocked)
 END_TEST
 
 
+/**
+ * Ensure that the fixed_delay distribution works by sending a number of packets
+ * spaced widely apart and ensuring all get the same delay.
+ */
+START_TEST (test_fixed_delay)
+{
+	INIT_CON();
+	SET_CON_FIXED_DELAY(INTERVAL);
+	
+	for (int i = 0; i < NUM_REPEATS; i++) {
+		// Wait a little longer than the consumers delay before sending a packet
+		// (this helps ensure that some counter isn't running in the background and
+		// wrapping every INTERVAL or some such thing).
+		for (int j = 0; j < INTERVAL+(INTERVAL/2); j++) {
+			ck_assert_int_eq(packets_received, i);
+			for (int k = 0; k < PERIOD; k++) {
+				scheduler_tick_tock(&s);
+			}
+		}
+		
+		// Inject a packet
+		buffer_push(&b, spinn_packet_pool_palloc(&pool));
+		
+		// The consumer should then accept the packet exactly after the interval has
+		// ellapsed
+		for (int j = 0; j < INTERVAL; j++) {
+			ck_assert_int_eq(packets_received, i);
+			for (int k = 0; k < PERIOD; k++) {
+				scheduler_tick_tock(&s);
+			}
+		}
+		
+		// A packet should have been received by now
+		ck_assert(buffer_is_empty(&b));
+		ck_assert_int_eq(packets_received, i+1);
+	}
+}
+END_TEST
+
+
 Suite *
 make_spinn_packet_con_suite(void)
 {
@@ -247,6 +290,7 @@ make_spinn_packet_con_suite(void)
 	tcase_add_test(tc_core, test_50_50);
 	tcase_add_test(tc_core, test_periodic_free);
 	tcase_add_test(tc_core, test_periodic_blocked);
+	tcase_add_test(tc_core, test_fixed_delay);
 	
 	// Add each test case to the suite
 	suite_add_tcase(s, tc_core);

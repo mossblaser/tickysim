@@ -302,6 +302,10 @@ configure_node_packet_con(spinn_node_t *node)
 		int interval
 			= spinn_sim_config_lookup_int(node->sim, "model.packet_consumer.temporal.periodic_interval");
 		spinn_packet_con_set_temporal_dist_periodic(&(node->packet_con), interval);
+	} else if (strcmp(con_temporal_dist, "fixed_delay") == 0) {
+		int delay
+			= spinn_sim_config_lookup_int(node->sim, "model.packet_consumer.temporal.fixed_delay_delay");
+		spinn_packet_con_set_temporal_dist_fixed_delay(&(node->packet_con), delay);
 	} else {
 		fprintf(stderr, "Error: model.packet_consumer.temporal.dist not recognised!\n");
 		exit(-1);

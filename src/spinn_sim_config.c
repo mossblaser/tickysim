@@ -36,6 +36,7 @@ static const char *hot_params[] = {
 	"model.packet_consumer.temporal.dist",
 	"model.packet_consumer.temporal.bernoulli_prob",
 	"model.packet_consumer.temporal.periodic_interval",
+	"model.packet_consumer.temporal.fixed_delay_delay",
 	
 	"model.node_to_node_links.packet_delay",
 };

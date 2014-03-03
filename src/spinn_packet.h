@@ -338,6 +338,19 @@ void spinn_packet_con_set_temporal_dist_periodic( spinn_packet_con_t *packet_con
 
 
 /**
+ * Set up the packet consumer to use the fixed_delay temporal pattern where the
+ * consumer waits a given number of cycles after a packet arrives before
+ * accepting it.
+ *
+ * This should be called outside of the simulation tick/tock phases for
+ * deterministic behaviour.
+ */
+void spinn_packet_con_set_temporal_dist_fixed_delay( spinn_packet_con_t *packet_con
+                                                   , int                 delay
+                                                   );
+
+
+/**
  * Free the resources used by a packet consumer.
  */
 void spinn_packet_con_destroy(spinn_packet_con_t *packet_con);
