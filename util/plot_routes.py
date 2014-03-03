@@ -137,11 +137,19 @@ def complement(start):
 	return [ (WIDTH - start[0] - 1, HEIGHT - start[1] - 1) ]
 
 
+def singlesource(start):
+	if start == (0,0):
+		for x in range(WIDTH):
+			for y in range(WIDTH):
+				yield (x,y)
+
+
 PATTERNS = {
 	"cyclic": cyclic,
 	"tornado": tornado,
 	"transpose": transpose,
 	"complement": complement,
+	"singlesource": singlesource,
 }
 
 if PATTERN in PATTERNS:
