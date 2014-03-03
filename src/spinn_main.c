@@ -19,12 +19,29 @@ get_packet_output_direction(spinn_router_t *r, spinn_packet_t *p);
 
 
 
+bool
+is_point_in_hexagon(spinn_coord_t pos)
+{
+	spinn_coord_t p;
+	spinn_hexagon_state_t h;
+	spinn_hexagon_init(&h, 4);
+	while (spinn_hexagon(&h, &p))
+		if (p.x == pos.x && p.y == pos.y)
+			return true;
+	return false;
+}
+
+
+
 /******************************************************************************
  * World starts here
  ******************************************************************************/
 
-#define WIDTH  12
-#define HEIGHT 12
+//#define WIDTH  12
+//#define HEIGHT 12
+
+#define WIDTH  8
+#define HEIGHT 8
 
 unsigned int routing_tables[WIDTH][HEIGHT][1024][2];
 
@@ -128,9 +145,18 @@ check_table_minimality(void)
 				for (int y2 = 0; y2 < HEIGHT; y2++) {
 					spinn_coord_t source = (spinn_coord_t){x1,y1};
 					spinn_coord_t destination = (spinn_coord_t){x2,y2};
+					if (!is_point_in_hexagon(source)
+					   || !is_point_in_hexagon(destination)
+					   )
+						continue;
 					
 					int table_length = get_table_route_length(source, destination);
-					int ticky_length = spinn_magnitude(spinn_shortest_vector(source, destination, ((spinn_coord_t){WIDTH,HEIGHT})));
+					spinn_full_coord_t v = (spinn_full_coord_t){ destination.x - source.x
+					                                           , destination.y - source.y
+					                                           , 0
+					                                           };
+					v = spinn_full_coord_minimise(v);
+					int ticky_length = spinn_magnitude(v);
 					
 					if (table_length != ticky_length) {
 						fprintf(stdout, "ERROR: Routing table route %d,%d -> %d,%d has length %d which doesn't match tickysim's %d!\n"
@@ -147,7 +173,6 @@ check_table_minimality(void)
 }
 
 
-
 void
 compare_routes(void)
 {
@@ -156,13 +181,19 @@ compare_routes(void)
 		for (int y1 = 0; y1 < HEIGHT; y1++) {
 			for (int x2 = 0; x2 < WIDTH; x2++) {
 				for (int y2 = 0; y2 < HEIGHT; y2++) {
+					// Skip the test if start/end are not in the board
+					if (!is_point_in_hexagon(((spinn_coord_t){x1,y1}))
+					   || !is_point_in_hexagon(((spinn_coord_t){x2,y2}))
+					   )
+						continue;
+					
 					// Work out route
 					spinn_packet_t p;
 					spinn_packet_init_dor( &p
 					                     , ((spinn_coord_t){x1,y1})
 					                     , ((spinn_coord_t){x2,y2})
 					                     , ((spinn_coord_t){WIDTH,HEIGHT})
-					                     , true
+					                     , false
 					                     , NULL
 					                     );
 					
