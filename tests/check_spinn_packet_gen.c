@@ -163,6 +163,48 @@ END_TEST
 
 
 /**
+ * Ensure that enable/disabling a packet generator works.
+ */
+START_TEST (test_enable)
+{
+	bool enabled = _i == 1;
+	
+	INIT_GEN(true);
+	SET_GEN_BERNOULLI(1.0);
+	SET_GEN_UNIFORM();
+	spinn_packet_gen_set_enabled(&g, enabled);
+	
+	// Run for long enough that the buffer ends up full
+	for (int i = 0; i < BUFFER_SIZE + 1; i++) {
+		// Run the generator for a single period
+		for (int j = 0; j < PERIOD; j++)
+			scheduler_tick_tock(&s);
+		
+		if (enabled) {
+			// A packet should have arrived
+			ck_assert(!buffer_is_empty(&b));
+			
+			// If the number of packets sent is larger than the buffer then the buffer
+			// should be full.
+			ck_assert(!!buffer_is_full(&b) == !!((i+1) >= BUFFER_SIZE));
+		} else {
+			ck_assert(buffer_is_empty(&b));
+		}
+		
+	}
+	
+	if (enabled) {
+		ck_assert_int_eq(packets_sent, BUFFER_SIZE);
+		ck_assert_int_eq(packets_blocked, 1);
+	} else {
+		ck_assert_int_eq(packets_sent, 0);
+		ck_assert_int_eq(packets_blocked, 0);
+	}
+}
+END_TEST
+
+
+/**
  * Ensure that when packets are sent with probability 50/50 that sometimes they
  * are sent and sometimes they are not. This test assumes (incorrectly, but
  * practically) that the probability of getting all 1s or all 0s is 0.0. If this
@@ -432,6 +474,7 @@ make_spinn_packet_gen_suite(void)
 	tcase_add_checked_fixture(tc_core, check_spinn_packet_gen_setup, check_spinn_packet_gen_teardown);
 	tcase_add_loop_test(tc_core, test_idle, 0, 2);
 	tcase_add_loop_test(tc_core, test_certain, 0, 2);
+	tcase_add_loop_test(tc_core, test_enable, 0, 2);
 	tcase_add_loop_test(tc_core, test_50_50, 0, 2);
 	tcase_add_loop_test(tc_core, test_periodic_free, 0, 2);
 	tcase_add_loop_test(tc_core, test_periodic_blocked, 0, 2);

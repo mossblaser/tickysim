@@ -60,6 +60,9 @@ struct spinn_packet_gen {
 	// Pool of packets to send
 	spinn_packet_pool_t *pool;
 	
+	// Should the generator be enabled
+	bool enabled;
+	
 	// Where will the packets be inserted
 	spinn_coord_t position;
 	spinn_coord_t system_size;

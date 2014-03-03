@@ -32,6 +32,78 @@
  ******************************************************************************/
 
 static void
+load_packet_gen_mask(spinn_sim_t *sim)
+{
+	// Load the list enabled cores
+	config_setting_t *gen_mask_list = config_lookup(&(sim->config), "model.packet_generator.generator_mask");
+	if (gen_mask_list == NULL || config_setting_type(gen_mask_list) != CONFIG_TYPE_LIST) {
+		fprintf(stderr, "Expected a list of (x,y) pairs, or an empty list, in 'model.packet_generator.generator_mask'.\n");
+		exit(-1);
+	}
+	
+	// If the mask list is empty, just enable all nodes and be done with it!
+	if (config_setting_length(gen_mask_list) == 0) {
+		for (int x = 0; x < sim->system_size.x; x++)
+			for (int y = 0; y < sim->system_size.y; y++)
+				spinn_packet_gen_set_enabled(&(sim->nodes[(y*sim->system_size.x) + x].packet_gen), true);
+		return;
+	}
+	
+	
+	// Disable all nodes unless enabled in the mask list
+	for (int x = 0; x < sim->system_size.x; x++)
+		for (int y = 0; y < sim->system_size.y; y++)
+			spinn_packet_gen_set_enabled(&(sim->nodes[(y*sim->system_size.x) + x].packet_gen), false);
+	
+	// Iterate over the list
+	for (int i = 0; i < config_setting_length(gen_mask_list); i++) {
+		config_setting_t *mask_coord_setting = config_setting_get_elem(gen_mask_list, i);
+		if (mask_coord_setting == NULL ||
+		    config_setting_type(mask_coord_setting) != CONFIG_TYPE_LIST ||
+		    config_setting_length(mask_coord_setting) != 2
+		    ) {
+			fprintf(stderr, "Expected an (x,y) pair as item %d of 'model.packet_generator.generator_mask'.\n"
+			              , i);
+			exit(-1);
+		}
+		
+		// Check that the x and y values are integers
+		config_setting_t *mask_x = config_setting_get_elem(mask_coord_setting, 0);
+		config_setting_t *mask_y = config_setting_get_elem(mask_coord_setting, 1);
+		
+		if (mask_x == NULL || mask_y == NULL ||
+		    config_setting_type(mask_x) != CONFIG_TYPE_INT ||
+		    config_setting_type(mask_y) != CONFIG_TYPE_INT
+		    ) {
+			fprintf(stderr, "Expected item %d in 'model.packet_generator.generator_mask' to be of the form (x,y) where x and y are integers.\n"
+			              , i);
+			exit(-1);
+		}
+		
+		spinn_coord_t mask_coord;
+		mask_coord.x = config_setting_get_int(mask_x);
+		mask_coord.y = config_setting_get_int(mask_y);
+		
+		// Check the coordinates are within the machine
+		if (mask_coord.x < 0 || mask_coord.x >= sim->system_size.x ||
+		    mask_coord.y < 0 || mask_coord.y >= sim->system_size.y ||
+		    ( sim->some_nodes_disabled &&
+		      !sim->node_enable_mask[ (mask_coord.y*sim->system_size.x)
+	                                + mask_coord.x ]
+		    )
+		   ) {
+			fprintf(stderr, "Expected item %d in 'model.packet_generator.generator_mask' to be within the size of the machine.\n"
+			              , i);
+			exit(-1);
+		}
+		
+		// Enable the core's generator
+		int mask_index = (mask_coord.y*sim->system_size.x) + mask_coord.x;
+		spinn_packet_gen_set_enabled(&(sim->nodes[mask_index].packet_gen), true);
+	}
+}
+
+static void
 load_packet_gen_p2p_dist(spinn_sim_t *sim)
 {
 	// Don't do anything if we're not using this distribution.
@@ -660,6 +732,9 @@ spinn_sim_model_init(spinn_sim_t *sim)
 			}
 		}
 	}
+	
+	// Set up the mask of which nodes are able to generate traffic.
+	load_packet_gen_mask(sim);
 }
 
 
@@ -695,6 +770,7 @@ spinn_sim_model_update(spinn_sim_t *sim)
 			configure_allow_local_packets(sim);
 			
 			load_packet_gen_p2p_dist(sim);
+			load_packet_gen_mask(sim);
 			
 			configure_node_packet_gen(node);
 			configure_node_packet_con(node);

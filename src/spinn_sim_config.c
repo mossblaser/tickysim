@@ -26,6 +26,7 @@
 // false. If any other values appear in the independent variables list then the
 // program will report an error.
 static const char *hot_params[] = {
+	"model.packet_generator.generator_mask",
 	"model.packet_generator.temporal.dist",
 	"model.packet_generator.temporal.bernoulli_prob",
 	"model.packet_generator.temporal.periodic_interval",

@@ -186,19 +186,23 @@ spinn_packet_gen_tick(void *g_)
 {
 	spinn_packet_gen_t *g = (spinn_packet_gen_t *)g_;
 	
-	switch (g->temporal_dist) {
-		case SPINN_GT_DIST_BERNOULLI:
-			g->send_packet = (((double)rand())/((double)RAND_MAX+1.0)) <= g->temporal_dist_data.bernoulli.prob;
-			break;
-		
-		case SPINN_GT_DIST_PERIODIC:
-			g->send_packet = g->temporal_dist_data.periodic.time_elapsed >= g->temporal_dist_data.periodic.interval - 1;
-			g->temporal_dist_data.periodic.time_elapsed++;
-			break;
-		
-		default:
-			g->send_packet = false;
-			break;
+	if (g->enabled) {
+		switch (g->temporal_dist) {
+			case SPINN_GT_DIST_BERNOULLI:
+				g->send_packet = (((double)rand())/((double)RAND_MAX+1.0)) <= g->temporal_dist_data.bernoulli.prob;
+				break;
+			
+			case SPINN_GT_DIST_PERIODIC:
+				g->send_packet = g->temporal_dist_data.periodic.time_elapsed >= g->temporal_dist_data.periodic.interval - 1;
+				g->temporal_dist_data.periodic.time_elapsed++;
+				break;
+			
+			default:
+				g->send_packet = false;
+				break;
+		}
+	} else {
+		g->send_packet = false;
 	}
 	
 	g->output_blocked = buffer_is_full(g->buffer);
@@ -318,6 +322,7 @@ spinn_packet_gen_init( spinn_packet_gen_t  *g
 	g->scheduler             = s;
 	g->buffer                = b;
 	g->pool                  = pool;
+	g->enabled               = true;
 	g->position              = position;
 	g->system_size           = system_size;
 	g->use_wrap_around_links = use_wrap_around_links;
@@ -333,6 +338,15 @@ spinn_packet_gen_init( spinn_packet_gen_t  *g
 	                  );
 	
 	// Initially leave distribution values undefined.
+}
+
+
+void
+spinn_packet_gen_set_enabled( spinn_packet_gen_t *g
+                            , bool                enabled
+                            )
+{
+	g->enabled = enabled;
 }
 
 

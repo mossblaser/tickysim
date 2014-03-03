@@ -179,6 +179,17 @@ void spinn_packet_gen_init( spinn_packet_gen_t  *gen
 
 
 /**
+ * Enable/disable the packet generator
+ *
+ * This should be called outside of the simulation tick/tock phases for
+ * deterministic behaviour.
+ */
+void spinn_packet_gen_set_enabled( spinn_packet_gen_t *packet_gen
+                                 , bool                enabled
+                                 );
+
+
+/**
  * Set up the packet generator to use the given Bernoulli distribution to decide
  * when to generate packets.
  *
