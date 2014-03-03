@@ -34,14 +34,14 @@ int tickysim_link_uses[6]      = {0,0,0,0,0,0};
 
 
 void
-load_routing_tables(void)
+load_routing_tables(char *table_file_base)
 {
 	// Load routing tables from file
 	for (int x = 0; x < WIDTH; x++) {
 		for (int y = 0; y < HEIGHT; y++) { 
-			char filename[32];
-			filename[31] = '\0';
-			snprintf(filename, 31, "spinn144tables/spin144.%d.%d", x, y);
+			char filename[1000];
+			filename[999] = '\0';
+			snprintf(filename, 999, "%s.%d.%d", table_file_base, x, y);
 			FILE *f = fopen(filename, "r");
 			
 			int i = 0;
@@ -227,7 +227,7 @@ compare_routes(void)
 int
 main(int argc, char *argv[])
 {
-	load_routing_tables();
+	load_routing_tables(argv[1]);
 	
 	//srand((int)time(NULL));
 	
@@ -235,21 +235,21 @@ main(int argc, char *argv[])
 	check_table_minimality();
 	
 	// Display difference in link usage
-	fprintf(stdout, "      E       \tNE      \tN       \tW       \tSW      \tS       \n");
-	fprintf(stdout, "Table %-8d\t%-8d\t%-8d\t%-8d\t%-8d\t%-8d\n"
-	              , routing_table_link_uses[0]
-	              , routing_table_link_uses[1]
-	              , routing_table_link_uses[2]
-	              , routing_table_link_uses[3]
-	              , routing_table_link_uses[4]
-	              , routing_table_link_uses[5]
-	              );
-	fprintf(stdout, "Ticky %-8d\t%-8d\t%-8d\t%-8d\t%-8d\t%-8d\n"
-	              , tickysim_link_uses[0]
-	              , tickysim_link_uses[1]
-	              , tickysim_link_uses[2]
-	              , tickysim_link_uses[3]
-	              , tickysim_link_uses[4]
-	              , tickysim_link_uses[5]
-	              );
+	//fprintf(stdout, "      E       \tNE      \tN       \tW       \tSW      \tS       \n");
+	//fprintf(stdout, "Table %-8d\t%-8d\t%-8d\t%-8d\t%-8d\t%-8d\n"
+	//              , routing_table_link_uses[0]
+	//              , routing_table_link_uses[1]
+	//              , routing_table_link_uses[2]
+	//              , routing_table_link_uses[3]
+	//              , routing_table_link_uses[4]
+	//              , routing_table_link_uses[5]
+	//              );
+	//fprintf(stdout, "Ticky %-8d\t%-8d\t%-8d\t%-8d\t%-8d\t%-8d\n"
+	//              , tickysim_link_uses[0]
+	//              , tickysim_link_uses[1]
+	//              , tickysim_link_uses[2]
+	//              , tickysim_link_uses[3]
+	//              , tickysim_link_uses[4]
+	//              , tickysim_link_uses[5]
+	//              );
 }
