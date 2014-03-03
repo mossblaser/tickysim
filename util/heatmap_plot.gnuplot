@@ -30,7 +30,10 @@ set cblabel DATA_NAME
 set ylabel "Y"
 set xlabel "X"
 
+print file_cmd
+
 set term pngcairo size 800,800
+
 
 plot file_cmd using (column(X_COL)):(column(Y_COL)):(column(DATA_COL)) with image notitle \
    , outline_cmd with lines notitle linecolor rgb "#FFFFFF" lw 2 \
