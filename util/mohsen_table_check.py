@@ -16,8 +16,8 @@ import sys
 import topology
 
 filename = sys.argv[1]
-
 num_chips = int(sys.argv[2])
+pattern = sys.argv[3]
 
 data_file = [int(n,16) for n in open(filename,"r").read().strip().split()]
 
@@ -67,34 +67,53 @@ def check_first_dest(pos, first_dest):
 	if not is_in_board(pos):
 		return
 	
-	x = pos[0] + 1
-	y = pos[1]
-	
-	if x >= system_size:
-		x = 0
-		y += 1
-	
-	if y >= system_size:
-		y = 0
-	
-	if not single_board or is_in_board((x,y)):
-		assert (x,y) == first_dest \
-		     , "Core does not start sending packets to the node to its right."
+	if pattern == "cyclic":
+		x = pos[0] + 1
+		y = pos[1]
+		
+		if x >= system_size:
+			x = 0
+			y += 1
+		
+		if y >= system_size:
+			y = 0
+		
+		if not single_board or is_in_board((x,y)):
+			assert (x,y) == first_dest \
+			     , "Core does not start sending packets to the node to its right."
+		else:
+			# If not in the board, just move on until we're back in the board
+			check_first_dest((x,y), first_dest)
+	elif pattern == "tornado":
+		assert ((pos[0]+system_size/2)%system_size, pos[1]) == first_dest \
+		     , "Core does not send packets to half-way around system to its right."
+	elif pattern == "transpose":
+		assert (pos[1],pos[0]) == first_dest \
+		     , "Core does not send packets to swapped coordinate location."
+	elif pattern == "complement":
+		assert (system_size-pos[0]-1,system_size-pos[1]-1) == first_dest \
+		     , "Core does not send packets to complement location."
 	else:
-		# If not in the board, just move on until we're back in the board
-		check_first_dest((x,y), first_dest)
-
+		print "Warning: not checking unknown pattern %s!"%pattern
 
 def check_num_dests(pos, num_dests):
 	"""
 	XXX: For cyclic traffic in a torus only.
 	"""
 	if single_board and is_in_board(pos):
-		assert 48-1 == num_dests \
-		     , "Wrong number of destinations."
+		if pattern == "cyclic":
+			assert 48-1 == num_dests \
+			     , "Wrong number of destinations."
+		else:
+			assert num_dests == 1 \
+			     , "Should have exactly one 1 destination per chip"
 	elif not single_board:
-		assert (system_size*system_size) - 1 == num_dests \
-		     , "Wrong number of destinations."
+		if pattern == "cyclic":
+			assert (system_size*system_size) - 1 == num_dests \
+			     , "Wrong number of destinations."
+		else:
+			assert num_dests == 1 \
+			     , "Should have exactly one 1 destination per chip"
 	else:
 		# Num dests can be anything because this chip is not on the baord
 		pass
