@@ -42,6 +42,7 @@ FPGA        12 12 results/mohsen_results.csv             cyclic        120      
 FPGA        12 12 results/mohsen_results.csv             cyclic         53            5        Routed     1      2      9            8
 FPGA        12 12 results/mohsen_results.csv             cyclic         53            3        Dropped    1      2      9            8
 FPGA        12 12 results/mohsen_results.csv             cyclic         32            3        Dropped    1      2      9            8
+FPGA        12 12 results/mohsen_results.csv             cyclic         16            3        Dropped    1      2      9            8
 FPGA        12 12 results/mohsen_results.csv             complement    120            5        Routed     1      2      9            8
 FPGA        12 12 results/mohsen_results.csv             complement     53            5        Routed     1      2      9            8
 FPGA        12 12 results/mohsen_results.csv             complement     53            3        Dropped    1      2      9            8
