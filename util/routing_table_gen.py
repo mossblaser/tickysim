@@ -215,7 +215,8 @@ class FPGATableGen(RoutingTableGen):
 			for x in range(self.system_size[0]):
 				out += self.generate_routing_table((x,y))
 				out += self.generate_injection_pattern((x,y))
-				out += [ self.consumption_delay<<10 | self.injection_rate
+				out += [ (self.consumption_delay<<10 | self.injection_rate)
+				         if self.is_in_system((x,y)) else 0x0000
 				       , self.router_timeout
 				       , self.sample_period
 				       ]
