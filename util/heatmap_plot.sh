@@ -76,6 +76,26 @@ SpiNNaker48  8  8 results/spinnaker48_results.csv        cyclic        160      
 SpiNNaker48  8  8 results/spinnaker48_results.csv        cyclic         53            6        Routed     1      2      9            8
 SpiNNaker48  8  8 results/spinnaker48_results.csv        cyclic         53            5        Dropped    1      2      9            8
 SpiNNaker48  8  8 results/spinnaker48_results.csv        cyclic         32            5        Dropped    1      2      9            8
+Tickysim64   8  8 results/4c3ac52_per_node_counters.dat  cyclic        120           11        Routed     6      7      3            5
+Tickysim64   8  8 results/4c3ac52_per_node_counters.dat  cyclic         40           11        Routed     6      7      3            5
+Tickysim64   8  8 results/4c3ac52_per_node_counters.dat  cyclic         18           10        Dropped    6      7      3            5
+Tickysim64   8  8 results/4c3ac52_per_node_counters.dat  cyclic         16           10        Dropped    6      7      3            5
+Tickysim64   8  8 results/4c3ac52_per_node_counters.dat  complement    120           11        Routed     6      7      3            5
+Tickysim64   8  8 results/4c3ac52_per_node_counters.dat  complement     40           11        Routed     6      7      3            5
+Tickysim64   8  8 results/4c3ac52_per_node_counters.dat  complement     18           10        Dropped    6      7      3            5
+Tickysim64   8  8 results/4c3ac52_per_node_counters.dat  complement     16           10        Dropped    6      7      3            5
+Tickysim64   8  8 results/4c3ac52_per_node_counters.dat  transpose     120           11        Routed     6      7      3            5
+Tickysim64   8  8 results/4c3ac52_per_node_counters.dat  transpose      40           11        Routed     6      7      3            5
+Tickysim64   8  8 results/4c3ac52_per_node_counters.dat  transpose      18           10        Dropped    6      7      3            5
+Tickysim64   8  8 results/4c3ac52_per_node_counters.dat  transpose      16           10        Dropped    6      7      3            5
+Tickysim64   8  8 results/4c3ac52_per_node_counters.dat  tornado       120           11        Routed     6      7      3            5
+Tickysim64   8  8 results/4c3ac52_per_node_counters.dat  tornado        40           11        Routed     6      7      3            5
+Tickysim64   8  8 results/4c3ac52_per_node_counters.dat  tornado        18           10        Dropped    6      7      3            5
+Tickysim64   8  8 results/4c3ac52_per_node_counters.dat  tornado        16           10        Dropped    6      7      3            5
+FPGA64       8  8 results/mohsen64_results.csv           cyclic        120            5        Routed     1      2      9            8
+FPGA64       8  8 results/mohsen64_results.csv           cyclic         40            5        Routed     1      2      9            8
+FPGA64       8  8 results/mohsen64_results.csv           cyclic         18            3        Dropped    1      2      9            8
+FPGA64       8  8 results/mohsen64_results.csv           cyclic         16            3        Dropped    1      2      9            8
 EOF
 )"
 
