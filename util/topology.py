@@ -33,6 +33,8 @@ WEST       = 3
 SOUTH_WEST = 4
 SOUTH      = 5
 
+# To a local core
+LOCAL      = 6
 
 def next_ccw(direction):
 	"""
