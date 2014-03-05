@@ -233,9 +233,9 @@ if __name__=="__main__":
 	# Print help message
 	if len(sys.argv) == 1:
 		print "Usage:"
-		print "  %s fpga [system_size] [system_shape] [traffic_pattern] [injection_rate] [consumption_delay] [router_timeout] [sample_period]"%sys.argv[0]
+		print "  python %s fpga [system_size] [system_shape] [traffic_pattern] [injection_rate] [consumption_delay] [router_timeout] [sample_period]"%sys.argv[0]
 		print "Example:"
-		print "  %s fpga 8,8 board cyclic 16 10 50 60000"%sys.argv[0]
+		print "  python %s fpga 8,8 board cyclic 16 10 50 60000"%sys.argv[0]
 		sys.exit(0)
 	
 	if sys.argv[1] == "fpga":
