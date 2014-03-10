@@ -196,6 +196,14 @@ spinn_packet_gen_tick(void *g_)
 				g->send_packet = g->temporal_dist_data.periodic.time_elapsed >= g->temporal_dist_data.periodic.interval - 1;
 				g->temporal_dist_data.periodic.time_elapsed++;
 				break;
+		
+			case SPINN_GT_DIST_FIXED_DELAY:
+				// If the buffer is ready, only generate a packet after the required time has elapsed
+				if (!buffer_is_full(g->buffer)) {
+					g->send_packet = g->temporal_dist_data.fixed_delay.time_elapsed >= g->temporal_dist_data.fixed_delay.delay - 1;
+					g->temporal_dist_data.fixed_delay.time_elapsed++;
+				}
+				break;
 			
 			default:
 				g->send_packet = false;
@@ -296,10 +304,22 @@ spinn_packet_gen_tock(void *g_)
 	// Send the packet
 	buffer_push(g->buffer, (void *)p);
 	
-	// Reset the timer for the periodic temporal distribution as a packet has now
-	// been sent
-	if (g->temporal_dist == SPINN_GT_DIST_PERIODIC)
-		g->temporal_dist_data.periodic.time_elapsed = 0;
+	switch (g->temporal_dist) {
+		case SPINN_GT_DIST_PERIODIC:
+			// Reset the timer for the periodic temporal distribution as a packet has
+			// now been sent
+			g->temporal_dist_data.periodic.time_elapsed = 0;
+			break;
+		case SPINN_GT_DIST_FIXED_DELAY:
+			// Reset the timer for the fixed_delay temporal distribution as a packet
+			// has now been sent
+			g->temporal_dist_data.fixed_delay.time_elapsed = 0;
+			break;
+		
+		default:
+			// Nothing to do for other distributions
+			break;
+	}
 }
 
 
@@ -368,6 +388,17 @@ spinn_packet_gen_set_temporal_dist_periodic( spinn_packet_gen_t *g
 	g->temporal_dist = SPINN_GT_DIST_PERIODIC;
 	g->temporal_dist_data.periodic.interval = interval;
 	g->temporal_dist_data.periodic.time_elapsed = 0;
+}
+
+
+void
+spinn_packet_gen_set_temporal_dist_fixed_delay( spinn_packet_gen_t *g
+                                              , int                 delay
+                                              )
+{
+	g->temporal_dist = SPINN_GT_DIST_FIXED_DELAY;
+	g->temporal_dist_data.fixed_delay.delay = delay;
+	g->temporal_dist_data.fixed_delay.time_elapsed = 0;
 }
 
 

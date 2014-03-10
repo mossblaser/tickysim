@@ -216,6 +216,19 @@ void spinn_packet_gen_set_temporal_dist_periodic( spinn_packet_gen_t *packet_gen
 
 
 /**
+ * Set up the packet generator to use the fixed_delay temporal pattern where the
+ * generator waits a given number of cycles after the output becomes free before
+ * generating a packet.
+ *
+ * This should be called outside of the simulation tick/tock phases for
+ * deterministic behaviour.
+ */
+void spinn_packet_gen_set_temporal_dist_fixed_delay( spinn_packet_gen_t *packet_gen
+                                                   , int                 delay
+                                                   );
+
+
+/**
  * Set up the packet generator to send packets to uniform random destinations.
  *
  * This should be called outside of the simulation tick/tock phases for

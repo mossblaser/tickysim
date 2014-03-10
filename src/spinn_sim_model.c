@@ -238,6 +238,10 @@ configure_node_packet_gen(spinn_node_t *node)
 		int interval
 			= spinn_sim_config_lookup_int(node->sim, "model.packet_generator.temporal.periodic_interval");
 		spinn_packet_gen_set_temporal_dist_periodic(&(node->packet_gen), interval);
+	} else if (strcmp(gen_temporal_dist, "fixed_delay") == 0) {
+		int delay
+			= spinn_sim_config_lookup_int(node->sim, "model.packet_generator.temporal.fixed_delay_delay");
+		spinn_packet_gen_set_temporal_dist_fixed_delay(&(node->packet_gen), delay);
 	} else {
 		fprintf(stderr, "Error: model.packet_generator.temporal.dist not recognised!\n");
 		exit(-1);
