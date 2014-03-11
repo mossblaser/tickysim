@@ -31,6 +31,9 @@ struct spinn_node {
 	// Back-reference to the simulation
 	spinn_sim_t *sim;
 	
+	// The coordinate of the board in the space of boards
+	spinn_coord_t board_coord;
+	
 	// The router
 	spinn_router_t router;
 	

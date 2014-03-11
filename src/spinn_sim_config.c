@@ -40,6 +40,7 @@ static const char *hot_params[] = {
 	"model.packet_consumer.temporal.fixed_delay_delay",
 	
 	"model.node_to_node_links.packet_delay",
+	"model.board_to_board_links.packet_delay",
 };
 static const int num_hot_params = sizeof(hot_params)/sizeof(char *);
 

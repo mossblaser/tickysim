@@ -317,12 +317,33 @@ configure_node_packet_con(spinn_node_t *node)
 }
 
 static void
-configure_node_to_node_links(spinn_node_t *node)
+configure_links(spinn_node_t *node)
 {
-	// Change the node-to-node delays
-	int delay_ticks = spinn_sim_config_lookup_int(node->sim, "model.node_to_node_links.packet_delay");
-	for (int i = 0; i < 6; i++)
-		delay_set_delay(&(node->delays[i]), delay_ticks);
+	// Set the delays between board to board and link to link connections
+	
+	int node_to_node_delay_ticks   = spinn_sim_config_lookup_int(node->sim, "model.node_to_node_links.packet_delay");
+	int board_to_board_delay_ticks = spinn_sim_config_lookup_int(node->sim, "model.board_to_board_links.packet_delay");
+	
+	for (int i = 0; i < 6; i++) {
+		// Find out where the link goes
+		spinn_coord_t dest_offset = spinn_dir_to_vector((spinn_direction_t)i);
+		spinn_coord_t dest_pos = node->position;
+		dest_pos.x += dest_offset.x + node->sim->system_size.x;
+		dest_pos.y += dest_offset.y + node->sim->system_size.y;
+		dest_pos.x %= node->sim->system_size.x;
+		dest_pos.y %= node->sim->system_size.y;
+		
+		spinn_node_t *dest_node = &(node->sim->nodes[(dest_pos.y * node->sim->system_size.x) + dest_pos.x]);
+		
+		// Assign the link latency depending whether the link is on the same board
+		// or not.
+		if (dest_node->board_coord.x == node->board_coord.x
+		    && dest_node->board_coord.y == node->board_coord.y) {
+			delay_set_delay(&(node->delays[i]), node_to_node_delay_ticks);
+		} else {
+			delay_set_delay(&(node->delays[i]), board_to_board_delay_ticks);
+		}
+	}
 }
 
 static void
@@ -612,7 +633,13 @@ spinn_sim_model_init(spinn_sim_t *sim)
 	
 	// Get the network topology information
 	const char *topology_name = spinn_sim_config_lookup_string(sim, "model.network.topology");
-	if (strcmp(topology_name, "torus") == 0) {
+	if (strcmp(topology_name, "multi_board_torus") == 0) {
+		int board_radius = spinn_sim_config_lookup_int(sim, "model.network.multi_board_torus_radius");
+		sim->system_size.x = 3*board_radius*spinn_sim_config_lookup_int(sim, "model.network.multi_board_torus_width");
+		sim->system_size.y = 3*board_radius*spinn_sim_config_lookup_int(sim, "model.network.multi_board_torus_height");
+		
+		use_wrap_around_links = true;
+	} else if (strcmp(topology_name, "torus") == 0) {
 		sim->system_size.x = spinn_sim_config_lookup_int(sim, "model.network.torus_width");
 		sim->system_size.y = spinn_sim_config_lookup_int(sim, "model.network.torus_height");
 		
@@ -676,6 +703,7 @@ spinn_sim_model_init(spinn_sim_t *sim)
 			sim->node_enable_mask[i] = true;
 	}
 	
+	
 	// Set up the array of packet generator p2p destinations
 	sim->node_packet_gen_p2p_target = calloc( sim->system_size.x*sim->system_size.y
 	                                        , sizeof(spinn_coord_t)
@@ -700,8 +728,40 @@ spinn_sim_model_init(spinn_sim_t *sim)
 		}
 	}
 	
+	// Label each node with the board it is placed on.
+	if (strcmp(topology_name, "multi_board_torus") == 0) {
+		int board_radius = spinn_sim_config_lookup_int(sim, "model.network.multi_board_torus_radius");
+		int width  = spinn_sim_config_lookup_int(sim, "model.network.multi_board_torus_width");
+		int height = spinn_sim_config_lookup_int(sim, "model.network.multi_board_torus_height");
+		
+		// Iterate over the threeboards in the system to label them
+		spinn_threeboard_state_t t;
+		spinn_threeboard_init(&t, board_radius, width, height);
+		
+		spinn_coord_t tb_p;
+		while (spinn_threeboard(&t, &tb_p)) {
+			// Iterate over the chips within a board and label them
+			spinn_hexagon_state_t h;
+			spinn_hexagon_init(&h, board_radius);
+			
+			spinn_coord_t h_p;
+			while (spinn_hexagon(&h, &h_p)) {
+				int x = tb_p.x + h_p.x;
+				int y = tb_p.y + h_p.y;
+				x %= sim->system_size.x;
+				y %= sim->system_size.y;
+				spinn_node_t *node = &(sim->nodes[(y * sim->system_size.x) + x]);
+				node->board_coord = tb_p;
+			}
+		}
+	} else {
+		// All other topologies don't have seperate boards so label them board
+		// (0,0).
+		for (int i = 0; i < sim->system_size.x*sim->system_size.y; i++)
+			sim->nodes[i].board_coord = ((spinn_coord_t){0,0});
+	}
+	
 	// Wire-up the nodes with delays
-	int delay_ticks = spinn_sim_config_lookup_int(sim, "model.node_to_node_links.packet_delay");
 	for (int y = 0; y < sim->system_size.y; y++) {
 		for (int x = 0; x < sim->system_size.x; x++) {
 			spinn_node_t *node = &(sim->nodes[(y * sim->system_size.x) + x]);
@@ -733,10 +793,13 @@ spinn_sim_model_init(spinn_sim_t *sim)
 				delay_init( &(node->delays[i])
 				          , &(sim->scheduler)
 				          , 1
-				          , delay_ticks
+				          , -1 // Set by configure_links
 				          , output_buffer
 				          , input_buffer
 				          );
+				
+				// Set the delay duration
+				configure_links(node);
 			}
 		}
 	}
@@ -771,18 +834,18 @@ spinn_sim_model_destroy(spinn_sim_t *sim)
 void
 spinn_sim_model_update(spinn_sim_t *sim)
 {
+	configure_allow_local_packets(sim);
+	
+	load_packet_gen_p2p_dist(sim);
+	load_packet_gen_mask(sim);
+	
 	for (int y = 0; y < sim->system_size.y; y++) {
 		for (int x = 0; x < sim->system_size.x; x++) {
 			spinn_node_t *node = &(sim->nodes[(y * sim->system_size.x) + x]);
 			
-			configure_allow_local_packets(sim);
-			
-			load_packet_gen_p2p_dist(sim);
-			load_packet_gen_mask(sim);
-			
 			configure_node_packet_gen(node);
 			configure_node_packet_con(node);
-			configure_node_to_node_links(node);
+			configure_links(node);
 		}
 	}
 }
