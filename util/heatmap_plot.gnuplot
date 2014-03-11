@@ -30,8 +30,6 @@ set cblabel DATA_NAME
 set ylabel "Y"
 set xlabel "X"
 
-print file_cmd
-
 set term pngcairo size 800,800
 
 

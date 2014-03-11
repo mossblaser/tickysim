@@ -58,7 +58,7 @@ def render_heatmap_file(patterns, width, height, link_latency=16):
 					# Get the x and y coordinate of the chip
 					core_id%width, core_id/height,
 					# The results
-					dropped, injected, routed, received,
+					dropped, injected, injected+routed-dropped, received,
 					# The injection rate
 					float(link_latency)/inj_period,
 					inj_period,
