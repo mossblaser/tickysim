@@ -38,13 +38,12 @@ delay_tick(void *d_)
 	
 	// The input and output buffers are both ready!
 	if (!buffer_is_empty(d->input) && !buffer_is_full(d->output)) {
-		if (d->current_delay > 0)
-			d->current_delay--;
+		d->time_elapsed++;
 		
 		// If the value has been waiting long enough forward it.
-		if (d->current_delay == 0) {
+		if (d->time_elapsed >= d->delay) {
 			d->forward = true;
-			d->current_delay = d->delay;
+			d->time_elapsed = 0;
 		}
 	}
 }
@@ -83,8 +82,8 @@ delay_init( delay_t     *d
 	d->input  = input;
 	d->output = output;
 	
-	d->delay         = delay;
-	d->current_delay = delay;
+	d->delay    = delay;
+	d->time_elapsed = 0;
 	
 	// Schedule the arbiter tick/tock functions to occur at the specified
 	// interval.

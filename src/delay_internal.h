@@ -17,7 +17,7 @@ struct delay {
 	
 	// The number of periods the first buffer has contained a value which hasn't
 	// been forwarded.
-	int current_delay;
+	int time_elapsed;
 	
 	// Should the value in the first buffer be popped and placed in the next
 	// buffer? (Set in the tick phase and read in the tock phase).
