@@ -21,6 +21,13 @@
 typedef struct spinn_hexagon_state spinn_hexagon_state_t;
 
 
+/**
+ * State of the spinn_threeboard() generator function. Must be initialised using
+ * spinn_hexagon_init().
+ */
+typedef struct spinn_threeboard_state spinn_threeboard_state_t;
+
+
 // Concrete definitions of the above types
 #include "spinn_topology_internal.h"
 
@@ -125,6 +132,26 @@ void spinn_hexagon_init(spinn_hexagon_state_t *h, int num_layers);
  * undefined.
  */
 bool spinn_hexagon(spinn_hexagon_state_t *h, spinn_coord_t *position);
+
+
+/**
+ * Initialise the data structure used by spinn_threeboard() to construct a set
+ * of threeboard of the given width and height for hexagonal threeboards with
+ * the given number of layers.
+ */
+void spinn_threeboard_init(spinn_threeboard_state_t *h, int num_layers, int width, int height);
+
+
+/**
+ * Generate the coordinates of positions of the bottom-left node on a hexagonal
+ * board as used in multi-board SpiNNaker systems. Sets the position in the
+ * spinn_coord_t indicated and returns false when no more positions exist.
+ *
+ * Coordinates will be positive with x and y ranging from 0 to
+ * width*(3*num_layers_)-1 and height*(3*num_layers)-1 respectively, inclusive.
+ * The value of position when spinn_threeboard returns false is undefined.
+ */
+bool spinn_threeboard(spinn_threeboard_state_t *h, spinn_coord_t *position);
 
 #endif
 

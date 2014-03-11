@@ -212,6 +212,46 @@ START_TEST (test_hexagon)
 END_TEST
 
 
+START_TEST (test_threeboard_2_2)
+{
+	const int width = 2;
+	const int height = 2;
+	const int radius = 4;
+	// The set of threeboard corners for a 2x2 set of threeboards
+	int correct_answer[12][2] = { {0,0},   {4,8},   {8,4}
+	                            , {12,0},  {16,8},  {20,4}
+	                            , {0,12},  {4,20},  {8,16}
+	                            , {12,12}, {16,20}, {20,16}
+	                            };
+	int num_correct_answers = 12;
+	
+	spinn_threeboard_state_t t;
+	spinn_threeboard_init(&t, radius, width, height);
+	
+	// Check that every node produced was expected
+	spinn_coord_t p;
+	while (spinn_threeboard(&t, &p)) {
+		bool found = false;
+		for (int i = 0; i < num_correct_answers; i++) {
+			if (correct_answer[i][0] == p.x && correct_answer[i][1] == p.y) {
+				// Mark as found
+				found = true;
+				correct_answer[i][0] = -1;
+				correct_answer[i][1] = -1;
+			}
+		}
+		ck_assert(found);
+	}
+	
+	// Check none were missed
+	for (int i = 0; i < num_correct_answers; i++) {
+		ck_assert_int_eq(correct_answer[i][0], -1);
+		ck_assert_int_eq(correct_answer[i][1], -1);
+	}
+}
+END_TEST
+
+
 Suite *
 make_spinn_topology_suite(void)
 {
@@ -226,6 +266,7 @@ make_spinn_topology_suite(void)
 	tcase_add_test(tc_core, test_shortest_vector);
 	tcase_add_test(tc_core, test_dir_to_vector);
 	tcase_add_test(tc_core, test_hexagon);
+	tcase_add_test(tc_core, test_threeboard_2_2);
 	
 	// Add each test case to the suite
 	suite_add_tcase(s, tc_core);

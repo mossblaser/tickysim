@@ -164,3 +164,46 @@ spinn_hexagon(spinn_hexagon_state_t *h, spinn_coord_t *position)
 	// We've reached the outside of the hexagon, stop iterating
 	return false;
 }
+
+
+void
+spinn_threeboard_init(spinn_threeboard_state_t *t, int num_layers, int width, int height)
+{
+	t->num_layers = num_layers;
+	t->width = width;
+	t->height = height;
+	t->x = 0;
+	t->y = 0;
+	t->z = 0;
+}
+
+bool
+spinn_threeboard(spinn_threeboard_state_t *t, spinn_coord_t *position)
+{
+	// Have we finished all the threeboards requested?
+	if (t->x >= t->width) {
+		return false;
+	}
+	
+	position->x = t->num_layers*(t->x*3 + t->z);
+	position->y = t->num_layers*(t->y*3 + ((3-t->z) + 3)%3);
+	
+	// Wrap-around
+	position->x += 3*t->num_layers*t->width;
+	position->y += 3*t->num_layers*t->height;
+	position->x %= 3*t->num_layers*t->width;
+	position->y %= 3*t->num_layers*t->height;
+	
+	// Move on to next board
+	t->z++;
+	if (t->z >= 3) {
+		t->z = 0;
+		t->y++;
+	}
+	if (t->y >= t->height) {
+		t->y = 0;
+		t->x++;
+	}
+	
+	return true;
+}

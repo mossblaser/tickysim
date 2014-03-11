@@ -27,3 +27,21 @@ struct spinn_hexagon_state {
 	// The position of the last node generated
 	spinn_coord_t pos;
 };
+
+
+/**
+ * State of the spinn_threeboard() generator function.
+ */
+struct spinn_threeboard_state {
+	// The number of layers in the hexagon to be drawn
+	int num_layers;
+	
+	// The width and height in threeboards
+	int width;
+	int height;
+	
+	// The current x, y and z positions.
+	int x;
+	int y;
+	int z;
+};
