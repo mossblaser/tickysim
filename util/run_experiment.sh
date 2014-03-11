@@ -25,8 +25,8 @@ RESULTS_DIR="$(dirname "$RESULTS_PREFIX${RESULT_FILES[0]}" )"
 
 CLUSTER_HEAD_NODE=kilburn.cs.man.ac.uk
 
-PARALLEL_PROFILE=cluster16
-THREADS_PER_MACHINE=1
+PARALLEL_PROFILE=cluster128
+THREADS_PER_MACHINE=2
 
 echo =====================
 echo Experiment Parameters
