@@ -207,6 +207,15 @@ FPGA64       8  8 results/mohsen64_results.csv           tornado        21      
 EOF
 )"
 
+
+# SIMULATOR W  H  FILE                                   PATTERN       INJ_INTERVAL  DATA_COL  DATA_NAME  X_COL  Y_COL  PATTERN_COL  INJ_INTERVAL_COL
+EXPERIMENTS="$(cat <<EOF
+TickysimSt  12 12 results/per_node_counters2.dat         tornado        53           12        Routed     7      8      3            5
+TickysimSf  12 12 results/per_node_counters.dat          tornado        53           12        Routed     7      8      3            5
+Tickysim    12 12 results/e74e47a_per_node_counters.dat  tornado        53           10        Routed     5      6      3            4
+EOF
+)"
+
 echo "$EXPERIMENTS" | while read SIMULATOR W H FILE PATTERN INJ_INTERVAL DATA_COL DATA_NAME X_COL Y_COL PATTERN_COL INJ_INTERVAL_COL; do
 	INJ_LOAD="$(python -c "print \"%0.2f\"%(16.0/$INJ_INTERVAL)")"
 	
