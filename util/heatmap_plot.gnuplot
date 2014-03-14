@@ -23,7 +23,10 @@ else \
 	set xrange[0-0.5:W-1+0.5]; \
 	set yrange[0-0.5:H-1+0.5];
 
-set cbrange[0:]
+if (DATA_MAX == 0) \
+	set cbrange[0:]; \
+else \
+	set cbrange[0:DATA_MAX];
 
 set title sprintf("%s for %s pattern with %0.2f injected load in %s", DATA_NAME, PATTERN, INJ_RATE, SIMULATOR)
 set cblabel DATA_NAME
