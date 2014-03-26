@@ -16,6 +16,20 @@ echo "<!-- I'm sorry you had to see this... -->"
 
 echo '<ul>'
 for EXPERIMENT in ${EXPERIMENTS[@]}; do
+	# Does this experiment have results for all?
+	RESULTS_FOR_ALL=yes
+	for SIMULATOR in ${SIMULATORS[@]}; do
+		FILENAME="$HEATMAP_DIR/${SIMULATOR}_$EXPERIMENT"
+		if [ ! -f "$FILENAME" ]; then
+			RESULTS_FOR_ALL=no
+		fi
+	done
+	
+	# Skip when we don't have results for everyone
+	if [ "$RESULTS_FOR_ALL" == "no" ]; then
+		continue
+	fi
+	
 	echo "  <li><a href=\"#$EXPERIMENT\">$EXPERIMENT</a></li>"
 done
 echo '</ul>'
@@ -31,6 +45,20 @@ echo '  </tr></thead>'
 echo '  <tbody>' 
 
 for EXPERIMENT in ${EXPERIMENTS[@]}; do
+	# Does this experiment have results for all?
+	RESULTS_FOR_ALL=yes
+	for SIMULATOR in ${SIMULATORS[@]}; do
+		FILENAME="$HEATMAP_DIR/${SIMULATOR}_$EXPERIMENT"
+		if [ ! -f "$FILENAME" ]; then
+			RESULTS_FOR_ALL=no
+		fi
+	done
+	
+	# Skip when we don't have results for everyone
+	if [ "$RESULTS_FOR_ALL" == "no" ]; then
+		continue
+	fi
+	
 	echo '  <tr>'
 	printf "    <td><a id="$EXPERIMENT"></a>*$EXPERIMENT</td>"
 		for SIMULATOR in ${SIMULATORS[@]}; do
