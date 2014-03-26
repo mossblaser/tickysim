@@ -45,10 +45,6 @@ for line in set(full_set):
 	if     all(x < ((12*width)  + 0.5) for (x,y) in line) \
 	   and all(y < ((12*height) + 0.5) for (x,y) in line):
 		cropped_set.append(line)
-cropped_set.append(((-0.5, -0.5), (12*width - 0.5, -0.5)))
-cropped_set.append(((-0.5, -0.5), (-0.5, 12*width - 0.5)))
-cropped_set.append(((12*width - 0.5, -0.5), (12*width - 0.5, 12*width - 0.5)))
-cropped_set.append(((-0.5, 12*width - 0.5), (12*width - 0.5, 12*width - 0.5)))
 
 for start, stop in set(cropped_set):
 	print "\t".join(map(str, start))
