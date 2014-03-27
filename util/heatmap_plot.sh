@@ -667,6 +667,8 @@ FPGA        12 12 results/mohsen_results.csv             tornado       120      
 FPGA        12 12 results/mohsen_results.csv             tornado       120            5        Routed     0        1      2      9            8
 FPGA        12 12 results/mohsen_results.csv             transpose     120            3        Dropped    0        1      2      9            8
 FPGA        12 12 results/mohsen_results.csv             transpose     120            5        Routed     0        1      2      9            8
+FPGA        12 12 results/mohsen_results.csv             tornado       160            3        Dropped    0        1      2      9            8
+FPGA        12 12 results/mohsen_results.csv             tornado       160            5        Routed     0        1      2      9            8
 SpiNNaker   12 12 results/spinnaker_results.csv          complement     20            5        Dropped    0        1      2      9            8
 SpiNNaker   12 12 results/spinnaker_results.csv          complement     20            6        Routed     0        1      2      9            8
 SpiNNaker   12 12 results/spinnaker_results.csv          cyclic         20            5        Dropped    0        1      2      9            8

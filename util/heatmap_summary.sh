@@ -25,10 +25,10 @@ for EXPERIMENT in ${EXPERIMENTS[@]}; do
 		fi
 	done
 	
-	# Skip when we don't have results for everyone
-	if [ "$RESULTS_FOR_ALL" == "no" ]; then
-		continue
-	fi
+	## Skip when we don't have results for everyone
+	#if [ "$RESULTS_FOR_ALL" == "no" ]; then
+	#	continue
+	#fi
 	
 	echo "  <li><a href=\"#$EXPERIMENT\">$EXPERIMENT</a></li>"
 done
@@ -54,10 +54,10 @@ for EXPERIMENT in ${EXPERIMENTS[@]}; do
 		fi
 	done
 	
-	# Skip when we don't have results for everyone
-	if [ "$RESULTS_FOR_ALL" == "no" ]; then
-		continue
-	fi
+	## Skip when we don't have results for everyone
+	#if [ "$RESULTS_FOR_ALL" == "no" ]; then
+	#	continue
+	#fi
 	
 	echo '  <tr>'
 	printf "    <td><a id="$EXPERIMENT"></a>*$EXPERIMENT</td>"
