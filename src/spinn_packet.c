@@ -189,7 +189,7 @@ spinn_packet_gen_tick(void *g_)
 	if (g->enabled) {
 		switch (g->temporal_dist) {
 			case SPINN_GT_DIST_BERNOULLI:
-				g->send_packet = (((double)rand())/((double)RAND_MAX+1.0)) <= g->temporal_dist_data.bernoulli.prob;
+				g->send_packet |= (((double)rand())/((double)RAND_MAX+1.0)) <= g->temporal_dist_data.bernoulli.prob;
 				break;
 			
 			case SPINN_GT_DIST_PERIODIC:
@@ -232,8 +232,6 @@ spinn_packet_gen_tock(void *g_)
 	if (g->output_blocked) {
 		if (g->on_packet_gen)
 			g->on_packet_gen(NULL, g->on_packet_gen_data);
-		
-		g->send_packet = false;
 		return;
 	}
 	
@@ -304,6 +302,9 @@ spinn_packet_gen_tock(void *g_)
 	// Send the packet
 	buffer_push(g->buffer, (void *)p);
 	
+	// Clear the flag
+	g->send_packet = false;
+	
 	switch (g->temporal_dist) {
 		case SPINN_GT_DIST_PERIODIC:
 			// Reset the timer for the periodic temporal distribution as a packet has
@@ -350,6 +351,7 @@ spinn_packet_gen_init( spinn_packet_gen_t  *g
 	g->dest_filter_data      = dest_filter_data;
 	g->on_packet_gen         = on_packet_gen;
 	g->on_packet_gen_data    = on_packet_gen_data;
+	g->send_packet           = false;
 	
 	// Set up tick/tock functions
 	scheduler_schedule( s, period
@@ -471,7 +473,7 @@ spinn_packet_con_tick(void *c_)
 	
 	switch (c->temporal_dist) {
 		case SPINN_CT_DIST_BERNOULLI:
-			c->consume_packet = (((double)rand())/((double)RAND_MAX+1.0)) <= c->temporal_dist_data.bernoulli.prob;
+			c->consume_packet |= (((double)rand())/((double)RAND_MAX+1.0)) <= c->temporal_dist_data.bernoulli.prob;
 			break;
 		
 		case SPINN_CT_DIST_PERIODIC:
@@ -513,6 +515,9 @@ spinn_packet_con_tock(void *c_)
 	// Consume the packet
 	spinn_packet_t *p = buffer_pop(c->buffer);
 	
+	// Clear the flag
+	c->consume_packet = false;
+	
 	// Run the callback
 	if (c->on_packet_con)
 		c->on_packet_con(p, c->on_packet_con_data);
@@ -553,6 +558,7 @@ spinn_packet_con_init( spinn_packet_con_t      *c
 	c->pool               = pool;
 	c->on_packet_con      = on_packet_con;
 	c->on_packet_con_data = on_packet_con_data;
+	c->consume_packet     = false;
 	
 	// Set up tick/tock functions
 	scheduler_schedule( s, period
