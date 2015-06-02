@@ -51,8 +51,19 @@ spinn_packet_init_dor( spinn_packet_t *p
 		                        , 0
 		                        };
 		v = spinn_full_coord_minimise(v);
-
 	}
+	
+	// XXX: Use links only in one direction. This probably doesn't work for
+	// systems without wrap-around links...
+	int min_v = v.x;
+	if (v.y < min_v) min_v = v.y;
+	if (v.z < min_v) min_v = v.z;
+	if (min_v < 0) {
+		v.x -= min_v;
+		v.y -= min_v;
+		v.z -= min_v;
+	}
+	
 	
 	// The starting direction is simply the direction the vector is pointing
 	     if (v.x < 0) p->direction = SPINN_WEST;
